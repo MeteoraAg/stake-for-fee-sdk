@@ -46,6 +46,10 @@ pub struct Configuration {
     pub unstake_lock_duration: u64,
     /// Minimum time to start claim fee from lock escrow
     pub start_claim_fee_timestamp: i64,
+    /// padding 0
+    pub padding_0: u64,
+    /// padding
+    pub padding: [u128; 4],
 }
 
 #[zero_copy]
@@ -53,14 +57,22 @@ pub struct Configuration {
 pub struct Metrics {
     /// Total staked amount
     pub total_staked_amount: u64,
-    /// Fee a amount
-    pub total_fee_a_amount: u64,
-    /// Fee b amount
-    pub total_fee_b_amount: u64,
     /// Total stake escrow count
     pub total_stake_escrow_count: u64,
     /// Ongoing total partial unstake amount
     pub ongoing_total_partial_unstake_amount: u64,
+    /// padding 0
+    pub padding_0: u64,
+    /// Total claimed fee a amount
+    pub total_fee_a_amount: u128,
+    /// Total claimed fee b amount
+    pub total_fee_b_amount: u128,
+    /// User total claimed fee a
+    pub user_total_claimed_fee_a: u128,
+    /// User total claimed fee b
+    pub user_total_claimed_fee_b: u128,
+    /// padding
+    pub padding: [u128; 4],
 }
 
 #[zero_copy]
@@ -81,9 +93,11 @@ pub struct TopStakerInfo {
     /// Locked fee b
     pub locked_fee_b: u64,
     /// Padding
-    pub padding: u64,
+    pub padding_0: u64,
     /// cumulative fee a per liquidity
     pub cumulative_fee_a_per_liquidity: u128,
     /// cumulative fee b per liquidity
     pub cumulative_fee_b_per_liquidity: u128,
+    /// padding
+    pub padding: [u128; 4],
 }

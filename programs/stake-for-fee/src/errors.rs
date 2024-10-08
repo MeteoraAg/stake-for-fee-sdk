@@ -11,8 +11,8 @@ pub enum VaultError {
     #[msg("Invalid seconds to full unlock")]
     InvalidSecondsToFullUnlock,
 
-    #[msg("Pool missing SOL/USDC token")]
-    MustHaveQuoteToken,
+    #[msg("Pool missing SOL/USDC token or invalid stake mint")]
+    MustHaveQuoteTokenOrInvalidStakeMint,
 
     #[msg("Missing dropped stake escrow")]
     MissingDroppedStakeEscrow,

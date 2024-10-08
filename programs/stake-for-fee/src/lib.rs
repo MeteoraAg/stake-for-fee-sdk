@@ -41,7 +41,7 @@ pub mod stake_for_fee {
     }
 
     #[allow(unused_variables)]
-    pub fn claim_fee(ctx: Context<ClaimFee>) -> Result<()> {
+    pub fn claim_fee(ctx: Context<ClaimFee>, max_fee_a: u64, max_fee_b: u64) -> Result<()> {
         Ok(())
     }
 

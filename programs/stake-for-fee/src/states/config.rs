@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 #[account(zero_copy)]
 #[derive(InitSpace, Debug, Default)]
 pub struct Config {
+    pub index: u64,
     /// Seconds for lock escrow claimed fee to be fully dripped to the top stakers
     pub seconds_to_full_unlock: u64,
     /// Seconds for the requested unstake to withdraw the capital
@@ -12,7 +13,7 @@ pub struct Config {
     /// Maximum number of stakers in the top list
     pub top_list_length: u16,
     /// Padding
-    pub padding_0: [u8; 6],
+    pub padding_0: [u8; 14],
     /// Padding
-    pub padding: [u128; 20],
+    pub padding: [u128; 4],
 }
