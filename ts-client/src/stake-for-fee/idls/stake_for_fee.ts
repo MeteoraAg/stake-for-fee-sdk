@@ -34,7 +34,7 @@ export type StakeForFee = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "Token x vault"
+            "Token a vault"
           ]
         },
         {
@@ -42,7 +42,7 @@ export type StakeForFee = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "Token y vault"
+            "Token b vault"
           ]
         },
         {
@@ -323,7 +323,7 @@ export type StakeForFee = {
       ],
       "args": [
         {
-          "name": "amount",
+          "name": "maxAmount",
           "type": "u64"
         }
       ]
@@ -457,7 +457,16 @@ export type StakeForFee = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "maxFeeA",
+          "type": "u64"
+        },
+        {
+          "name": "maxFeeB",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "requestUnstake",
@@ -789,6 +798,112 @@ export type StakeForFee = {
       "args": []
     },
     {
+      "name": "claimFeeCrank",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ammProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "dummy",
       "docs": [
         "To force IDL generation for some struct for easier TS decoding later"
@@ -910,6 +1025,10 @@ export type StakeForFee = {
         "kind": "struct",
         "fields": [
           {
+            "name": "index",
+            "type": "u64"
+          },
+          {
             "name": "secondsToFullUnlock",
             "docs": [
               "Seconds for lock escrow claimed fee to be fully dripped to the top stakers"
@@ -945,7 +1064,7 @@ export type StakeForFee = {
             "type": {
               "array": [
                 "u8",
-                6
+                14
               ]
             }
           },
@@ -957,7 +1076,7 @@ export type StakeForFee = {
             "type": {
               "array": [
                 "u128",
-                20
+                4
               ]
             }
           }
@@ -1142,14 +1261,14 @@ export type StakeForFee = {
           {
             "name": "tokenAVault",
             "docs": [
-              "Token x vault"
+              "Token a vault"
             ],
             "type": "publicKey"
           },
           {
             "name": "tokenBVault",
             "docs": [
-              "Token y vault"
+              "Token b vault"
             ],
             "type": "publicKey"
           },
@@ -1348,6 +1467,25 @@ export type StakeForFee = {
               "Minimum time to start claim fee from lock escrow"
             ],
             "type": "i64"
+          },
+          {
+            "name": "padding0",
+            "docs": [
+              "padding 0"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -1365,20 +1503,6 @@ export type StakeForFee = {
             "type": "u64"
           },
           {
-            "name": "totalFeeAAmount",
-            "docs": [
-              "Fee x amount"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "totalFeeBAmount",
-            "docs": [
-              "Fee y amount"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "totalStakeEscrowCount",
             "docs": [
               "Total stake escrow count"
@@ -1391,6 +1515,53 @@ export type StakeForFee = {
               "Ongoing total partial unstake amount"
             ],
             "type": "u64"
+          },
+          {
+            "name": "padding0",
+            "docs": [
+              "padding 0"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalFeeAAmount",
+            "docs": [
+              "Total claimed fee a amount"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "totalFeeBAmount",
+            "docs": [
+              "Total claimed fee b amount"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "userTotalClaimedFeeA",
+            "docs": [
+              "User total claimed fee a"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "userTotalClaimedFeeB",
+            "docs": [
+              "User total claimed fee b"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -1438,19 +1609,19 @@ export type StakeForFee = {
           {
             "name": "lockedFeeA",
             "docs": [
-              "Locked fee x"
+              "Locked fee a"
             ],
             "type": "u64"
           },
           {
             "name": "lockedFeeB",
             "docs": [
-              "Locked fee y"
+              "Locked fee b"
             ],
             "type": "u64"
           },
           {
-            "name": "padding",
+            "name": "padding0",
             "docs": [
               "Padding"
             ],
@@ -1459,16 +1630,28 @@ export type StakeForFee = {
           {
             "name": "cumulativeFeeAPerLiquidity",
             "docs": [
-              "cumulative fee x per liquidity"
+              "cumulative fee a per liquidity"
             ],
             "type": "u128"
           },
           {
             "name": "cumulativeFeeBPerLiquidity",
             "docs": [
-              "cumulative fee y per liquidity"
+              "cumulative fee b per liquidity"
             ],
             "type": "u128"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -1522,6 +1705,11 @@ export type StakeForFee = {
           "name": "unstakeLockDuration",
           "type": "u64",
           "index": false
+        },
+        {
+          "name": "startClaimFeeTimestamp",
+          "type": "i64",
+          "index": false
         }
       ]
     },
@@ -1547,6 +1735,11 @@ export type StakeForFee = {
           "name": "owner",
           "type": "publicKey",
           "index": false
+        },
+        {
+          "name": "fullBalanceIndex",
+          "type": "u64",
+          "index": false
         }
       ]
     },
@@ -1559,8 +1752,8 @@ export type StakeForFee = {
           "index": false
         },
         {
-          "name": "topListLength",
-          "type": "u16",
+          "name": "index",
+          "type": "u64",
           "index": false
         },
         {
@@ -1572,6 +1765,16 @@ export type StakeForFee = {
           "name": "unstakeLockDuration",
           "type": "u64",
           "index": false
+        },
+        {
+          "name": "joinWindowDuration",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "topListLength",
+          "type": "u16",
+          "index": false
         }
       ]
     },
@@ -1581,6 +1784,11 @@ export type StakeForFee = {
         {
           "name": "config",
           "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "index",
+          "type": "u64",
           "index": false
         }
       ]
@@ -1984,6 +2192,41 @@ export type StakeForFee = {
           "index": false
         }
       ]
+    },
+    {
+      "name": "ReclaimIndex",
+      "fields": [
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "inOwner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "inOwnerBalance",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "outOwner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "outOwnerBalance",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "reclaimIndex",
+          "type": "u64",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -2004,8 +2247,8 @@ export type StakeForFee = {
     },
     {
       "code": 6003,
-      "name": "MustHaveQuoteToken",
-      "msg": "Pool missing SOL/USDC token"
+      "name": "MustHaveQuoteTokenOrInvalidStakeMint",
+      "msg": "Pool missing SOL/USDC token or invalid stake mint"
     },
     {
       "code": 6004,
@@ -2126,7 +2369,7 @@ export const IDL: StakeForFee = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "Token x vault"
+            "Token a vault"
           ]
         },
         {
@@ -2134,7 +2377,7 @@ export const IDL: StakeForFee = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "Token y vault"
+            "Token b vault"
           ]
         },
         {
@@ -2415,7 +2658,7 @@ export const IDL: StakeForFee = {
       ],
       "args": [
         {
-          "name": "amount",
+          "name": "maxAmount",
           "type": "u64"
         }
       ]
@@ -2549,7 +2792,16 @@ export const IDL: StakeForFee = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "maxFeeA",
+          "type": "u64"
+        },
+        {
+          "name": "maxFeeB",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "requestUnstake",
@@ -2881,6 +3133,112 @@ export const IDL: StakeForFee = {
       "args": []
     },
     {
+      "name": "claimFeeCrank",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenBVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ammProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "dummy",
       "docs": [
         "To force IDL generation for some struct for easier TS decoding later"
@@ -3002,6 +3360,10 @@ export const IDL: StakeForFee = {
         "kind": "struct",
         "fields": [
           {
+            "name": "index",
+            "type": "u64"
+          },
+          {
             "name": "secondsToFullUnlock",
             "docs": [
               "Seconds for lock escrow claimed fee to be fully dripped to the top stakers"
@@ -3037,7 +3399,7 @@ export const IDL: StakeForFee = {
             "type": {
               "array": [
                 "u8",
-                6
+                14
               ]
             }
           },
@@ -3049,7 +3411,7 @@ export const IDL: StakeForFee = {
             "type": {
               "array": [
                 "u128",
-                20
+                4
               ]
             }
           }
@@ -3234,14 +3596,14 @@ export const IDL: StakeForFee = {
           {
             "name": "tokenAVault",
             "docs": [
-              "Token x vault"
+              "Token a vault"
             ],
             "type": "publicKey"
           },
           {
             "name": "tokenBVault",
             "docs": [
-              "Token y vault"
+              "Token b vault"
             ],
             "type": "publicKey"
           },
@@ -3440,6 +3802,25 @@ export const IDL: StakeForFee = {
               "Minimum time to start claim fee from lock escrow"
             ],
             "type": "i64"
+          },
+          {
+            "name": "padding0",
+            "docs": [
+              "padding 0"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -3457,20 +3838,6 @@ export const IDL: StakeForFee = {
             "type": "u64"
           },
           {
-            "name": "totalFeeAAmount",
-            "docs": [
-              "Fee x amount"
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "totalFeeBAmount",
-            "docs": [
-              "Fee y amount"
-            ],
-            "type": "u64"
-          },
-          {
             "name": "totalStakeEscrowCount",
             "docs": [
               "Total stake escrow count"
@@ -3483,6 +3850,53 @@ export const IDL: StakeForFee = {
               "Ongoing total partial unstake amount"
             ],
             "type": "u64"
+          },
+          {
+            "name": "padding0",
+            "docs": [
+              "padding 0"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalFeeAAmount",
+            "docs": [
+              "Total claimed fee a amount"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "totalFeeBAmount",
+            "docs": [
+              "Total claimed fee b amount"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "userTotalClaimedFeeA",
+            "docs": [
+              "User total claimed fee a"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "userTotalClaimedFeeB",
+            "docs": [
+              "User total claimed fee b"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -3530,19 +3944,19 @@ export const IDL: StakeForFee = {
           {
             "name": "lockedFeeA",
             "docs": [
-              "Locked fee x"
+              "Locked fee a"
             ],
             "type": "u64"
           },
           {
             "name": "lockedFeeB",
             "docs": [
-              "Locked fee y"
+              "Locked fee b"
             ],
             "type": "u64"
           },
           {
-            "name": "padding",
+            "name": "padding0",
             "docs": [
               "Padding"
             ],
@@ -3551,16 +3965,28 @@ export const IDL: StakeForFee = {
           {
             "name": "cumulativeFeeAPerLiquidity",
             "docs": [
-              "cumulative fee x per liquidity"
+              "cumulative fee a per liquidity"
             ],
             "type": "u128"
           },
           {
             "name": "cumulativeFeeBPerLiquidity",
             "docs": [
-              "cumulative fee y per liquidity"
+              "cumulative fee b per liquidity"
             ],
             "type": "u128"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u128",
+                4
+              ]
+            }
           }
         ]
       }
@@ -3614,6 +4040,11 @@ export const IDL: StakeForFee = {
           "name": "unstakeLockDuration",
           "type": "u64",
           "index": false
+        },
+        {
+          "name": "startClaimFeeTimestamp",
+          "type": "i64",
+          "index": false
         }
       ]
     },
@@ -3639,6 +4070,11 @@ export const IDL: StakeForFee = {
           "name": "owner",
           "type": "publicKey",
           "index": false
+        },
+        {
+          "name": "fullBalanceIndex",
+          "type": "u64",
+          "index": false
         }
       ]
     },
@@ -3651,8 +4087,8 @@ export const IDL: StakeForFee = {
           "index": false
         },
         {
-          "name": "topListLength",
-          "type": "u16",
+          "name": "index",
+          "type": "u64",
           "index": false
         },
         {
@@ -3664,6 +4100,16 @@ export const IDL: StakeForFee = {
           "name": "unstakeLockDuration",
           "type": "u64",
           "index": false
+        },
+        {
+          "name": "joinWindowDuration",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "topListLength",
+          "type": "u16",
+          "index": false
         }
       ]
     },
@@ -3673,6 +4119,11 @@ export const IDL: StakeForFee = {
         {
           "name": "config",
           "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "index",
+          "type": "u64",
           "index": false
         }
       ]
@@ -4076,6 +4527,41 @@ export const IDL: StakeForFee = {
           "index": false
         }
       ]
+    },
+    {
+      "name": "ReclaimIndex",
+      "fields": [
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "inOwner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "inOwnerBalance",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "outOwner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "outOwnerBalance",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "reclaimIndex",
+          "type": "u64",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -4096,8 +4582,8 @@ export const IDL: StakeForFee = {
     },
     {
       "code": 6003,
-      "name": "MustHaveQuoteToken",
-      "msg": "Pool missing SOL/USDC token"
+      "name": "MustHaveQuoteTokenOrInvalidStakeMint",
+      "msg": "Pool missing SOL/USDC token or invalid stake mint"
     },
     {
       "code": 6004,

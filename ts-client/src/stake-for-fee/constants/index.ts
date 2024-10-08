@@ -14,3 +14,4 @@ export const DYNAMIC_VAULT_PROGRAM_ID = new PublicKey(
 );
 
 export const FULL_BALANCE_LIST_HARD_LIMIT = new BN(10000);
+export const U64_MAX = new BN("18446744073709551615");

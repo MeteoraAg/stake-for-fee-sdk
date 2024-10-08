@@ -66,16 +66,20 @@ export function getLockedEscrowPendingFee(
   bVaultLpMint: RawMint,
   poolLpMint: RawMint
 ) {
+  if (currentTime.lte(feeVault.topStakerInfo.lastClaimFeeAt)) {
+    return [new BN(0), new BN(0)];
+  }
+
   const secondsElapsedSinceLastClaim = currentTime.sub(
     feeVault.topStakerInfo.lastClaimFeeAt
   );
 
-  const isFirstClaimFeeExecuted = feeVault.topStakerInfo.lastClaimFeeAt.gt(
+  const firstClaimFeeExecuted = feeVault.topStakerInfo.lastClaimFeeAt.gt(
     feeVault.configuration.startClaimFeeTimestamp
   );
 
   if (
-    !isFirstClaimFeeExecuted &&
+    firstClaimFeeExecuted &&
     secondsElapsedSinceLastClaim.lt(MIN_LOCK_ESCROW_CLAIM_FEE_DURATION)
   ) {
     return [new BN(0), new BN(0)];

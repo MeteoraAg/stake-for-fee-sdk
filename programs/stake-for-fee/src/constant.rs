@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use anchor_lang::solana_program::clock::SECONDS_PER_DAY;
 use solana_program::pubkey;
 use solana_program::pubkey::Pubkey;

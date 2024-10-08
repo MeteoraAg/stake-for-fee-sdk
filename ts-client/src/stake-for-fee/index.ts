@@ -22,6 +22,7 @@ import {
   DYNAMIC_VAULT_PROGRAM_ID,
   FULL_BALANCE_LIST_HARD_LIMIT,
   STAKE_FOR_FEE_PROGRAM_ID,
+  U64_MAX,
 } from "./constants";
 import {
   decodeFullBalanceState,
@@ -439,7 +440,7 @@ export class StakeForFee {
     skipOwner: PublicKey
   ): PublicKey | null {
     const endIdx = FULL_BALANCE_LIST_HARD_LIMIT.toNumber() - 1;
-    let smallestBalance = new BN("18446744073709551615");
+    let smallestBalance = U64_MAX;
     let smallestOwner: PublicKey = null;
 
     for (let i = endIdx; i >= 0; i--) {
@@ -484,6 +485,16 @@ export class StakeForFee {
       for (let i = startIdx; i < endIdx; i++) {
         const staker = this.accountStates.fullBalanceListState.stakers[i];
         if (staker.balance.gte(stakeAmount)) {
+          if (staker.balance.eq(stakeAmount) && i > skipIdx) {
+            continue;
+          }
+          if (
+            this.accountStates.topStakerListState.stakers.find(
+              (s) => s.fullBalanceIndex.toNumber() == i
+            )
+          ) {
+            continue;
+          }
           if (closestStakers.length < lookupNumber) {
             closestStakers.push({
               idx: new BN(i),
@@ -708,9 +719,15 @@ export class StakeForFee {
    * Claim fee from stake escrow.
    *
    * @param owner Owner of stake escrow.
+   * @param maxFeeA Max fee A.
+   * @param maxFeeB Max fee B.
    * @returns Transaction
    */
-  public async claimFee(owner: PublicKey): Promise<Transaction> {
+  public async claimFee(
+    owner: PublicKey,
+    maxFeeA: BN,
+    maxFeeB: BN
+  ): Promise<Transaction> {
     const stakeEscrowKey = deriveStakeEscrow(
       this.feeVaultKey,
       owner,
@@ -739,7 +756,7 @@ export class StakeForFee {
     initializeUserTokenBIx && preInstructions.push(initializeUserTokenBIx);
 
     const transaction = await this.stakeForFeeProgram.methods
-      .claimFee()
+      .claimFee(maxFeeA, maxFeeB)
       .accounts({
         userTokenA,
         userTokenB,
