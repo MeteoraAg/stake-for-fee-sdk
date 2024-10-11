@@ -50,7 +50,7 @@ export function getVirtualPrice(
 
   // Stake for fee only support constant product pool
   const k = tokenAAmount.mul(tokenBAmount);
-  const d = new BN(new Decimal(k.toString()).sqrt().toString());
+  const d = new BN(new Decimal(k.toString()).sqrt().floor().toString());
   return d.shln(64).div(lpSupply);
 }
 

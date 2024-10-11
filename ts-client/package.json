@@ -1,6 +1,6 @@
 {
   "name": "@meteora-ag/stake-for-fee",
-  "version": "1.0.5",
+  "version": "1.0.6-rc1.9",
   "description": "",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -10,7 +10,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "test": "ts-node ./src/stake-for-fee/test.ts"
   },
   "author": "",
   "license": "ISC",

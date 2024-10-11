@@ -107,7 +107,6 @@ export async function getOrCreateStakeEscrowInstruction(
   connection: Connection,
   feeVaultKey: PublicKey,
   ownerKey: PublicKey,
-  payerKey: PublicKey,
   programId: PublicKey
 ): Promise<GetOrCreateStakeEscrowResponse> {
   const stakeEscrowKey = deriveStakeEscrow(feeVaultKey, ownerKey, programId);
@@ -126,7 +125,7 @@ export async function getOrCreateStakeEscrowInstruction(
         escrow: stakeEscrowKey,
         owner: ownerKey,
         systemProgram: SystemProgram.programId,
-        payer: payerKey,
+        payer: ownerKey,
       })
       .instruction();
     return {

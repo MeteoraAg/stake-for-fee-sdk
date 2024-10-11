@@ -5,6 +5,7 @@ import {
   StakeEscrow,
   TopStakerInfo,
   TopStakerListState,
+  TopStakerListStateContext,
 } from "../types";
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
@@ -242,13 +243,6 @@ export function parseFeeVaultInfo(
     performance,
     rawContext,
   };
-}
-
-interface TopStakerListStateContext {
-  rank: number;
-  wallet: PublicKey;
-  totalStaked: Decimal;
-  earning: Decimal;
 }
 
 export function parseTopStakerListState(

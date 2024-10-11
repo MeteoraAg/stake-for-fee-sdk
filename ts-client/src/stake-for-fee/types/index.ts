@@ -4,6 +4,8 @@ import { Amm } from "../idls/dynamic_amm";
 import { Vault } from "../idls/dynamic_vault";
 import { i64, struct, u64 } from "@coral-xyz/borsh";
 import { RawAccount, RawMint } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
+import Decimal from "decimal.js";
 
 export interface AccountStates {
   feeVault: FeeVault;
@@ -72,4 +74,11 @@ export interface Clock {
   epoch: BN;
   leaderScheduleEpoch: BN;
   unixTimestamp: BN;
+}
+
+export interface TopStakerListStateContext {
+  rank: number;
+  wallet: PublicKey;
+  totalStaked: Decimal;
+  earning: Decimal;
 }

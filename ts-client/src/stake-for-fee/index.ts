@@ -61,6 +61,7 @@ import {
   StakerMetadata,
   TopStakerListState,
 } from "./types";
+import Decimal from "decimal.js";
 
 type Opt = {
   stakeForFeeProgramId?: PublicKey;
@@ -399,7 +400,7 @@ export class StakeForFee {
     }
 
     const transaction = await stakeForFeeProgram.methods
-      .initializeVault(customStartClaimFeeTimestamp)
+      .initializeVault(customStartClaimFeeTimestamp ?? null)
       .accounts({
         config,
         vault: feeVaultKey,
@@ -496,14 +497,13 @@ export class StakeForFee {
       }
     }
 
-    return (
-      smallestOwner ??
-      deriveStakeEscrow(
-        this.feeVaultKey,
-        smallestOwner,
-        this.stakeForFeeProgram.programId
-      )
-    );
+    return smallestOwner
+      ? deriveStakeEscrow(
+          this.feeVaultKey,
+          smallestOwner,
+          this.stakeForFeeProgram.programId
+        )
+      : null;
   }
 
   findClosestStakeByBalanceInFullBalanceList(
@@ -762,7 +762,10 @@ export class StakeForFee {
   public async claimFee(
     owner: PublicKey,
     maxFeeA: BN,
-    maxFeeB: BN
+    maxFeeB: BN,
+    opt?: {
+      reStake?: boolean;
+    }
   ): Promise<Transaction> {
     const stakeEscrowKey = deriveStakeEscrow(
       this.feeVaultKey,
@@ -790,6 +793,58 @@ export class StakeForFee {
 
     initializeUserTokenAIx && preInstructions.push(initializeUserTokenAIx);
     initializeUserTokenBIx && preInstructions.push(initializeUserTokenBIx);
+
+    const postInstructions: TransactionInstruction[] = [];
+    if (opt?.reStake) {
+      const stakeEscrowState =
+        await this.stakeForFeeProgram.account.stakeEscrow.fetch(stakeEscrowKey);
+
+      if (!Boolean(stakeEscrowState.inTopList)) {
+        const smallestStakeEscrows: Array<AccountMeta> =
+          this.findReplaceableTopStaker(3).map((key) => {
+            return {
+              pubkey: key,
+              isWritable: true,
+              isSigner: false,
+            };
+          });
+
+        const smallestStakeEscrow =
+          this.findSmallestStakeEscrowInFullBalanceList(owner);
+
+        const stakeIx = await this.stakeForFeeProgram.methods
+          .stake(maxFeeB)
+          .accounts({
+            vault: this.feeVaultKey,
+            stakeEscrow: stakeEscrowKey,
+            smallestStakeEscrow,
+            topStakerList: this.accountStates.feeVault.topStakerList,
+            fullBalanceList: this.accountStates.feeVault.fullBalanceList,
+            tokenAVault: this.accountStates.feeVault.tokenAVault,
+            tokenBVault: this.accountStates.feeVault.tokenBVault,
+            owner,
+            pool: this.accountStates.feeVault.pool,
+            lpMint: this.accountStates.ammPool.lpMint,
+            lockEscrow: this.accountStates.feeVault.lockEscrow,
+            escrowVault: this.escrowVaultKey,
+            aTokenVault: this.accountStates.aVault.tokenVault,
+            bTokenVault: this.accountStates.bVault.tokenVault,
+            aVault: this.accountStates.ammPool.aVault,
+            bVault: this.accountStates.ammPool.bVault,
+            aVaultLp: this.accountStates.ammPool.aVaultLp,
+            bVaultLp: this.accountStates.ammPool.bVaultLp,
+            aVaultLpMint: this.accountStates.aVault.lpMint,
+            bVaultLpMint: this.accountStates.bVault.lpMint,
+            ammProgram: this.dynamicAmmProgram.programId,
+            vaultProgram: this.dynamicVaultProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .remainingAccounts(smallestStakeEscrows)
+          .instruction();
+
+        postInstructions.push(stakeIx);
+      }
+    }
 
     const transaction = await this.stakeForFeeProgram.methods
       .claimFee(maxFeeA, maxFeeB)
@@ -819,6 +874,7 @@ export class StakeForFee {
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .preInstructions(preInstructions)
+      .postInstructions(postInstructions)
       .transaction();
 
     const { blockhash, lastValidBlockHeight } =
@@ -841,18 +897,13 @@ export class StakeForFee {
    * @param owner The payer for fee and account rental. Signer.
    * @returns The transaction to execute the stake instruction
    */
-  public async stake(
-    maxAmount: BN,
-    owner: PublicKey,
-    payer: PublicKey
-  ): Promise<Transaction> {
+  public async stake(maxAmount: BN, owner: PublicKey): Promise<Transaction> {
     const preInstructions: Array<TransactionInstruction> = [];
     const { stakeEscrowKey, ix: initializeStakeEscrowIx } =
       await getOrCreateStakeEscrowInstruction(
         this.connection,
         this.feeVaultKey,
         owner,
-        payer,
         this.stakeForFeeProgram.programId
       );
 
@@ -929,7 +980,7 @@ export class StakeForFee {
     return new Transaction({
       blockhash,
       lastValidBlockHeight,
-      feePayer: payer,
+      feePayer: owner,
     }).add(transaction);
   }
 
@@ -1041,14 +1092,17 @@ export class StakeForFee {
    * @param stakeEscrow The stake escrow to get the unstake records for.
    * @returns A promise that resolves with an array of unstake records that match the given stake escrow.
    */
-  static async getUnstakeByStakeEscrow(
-    connection: Connection,
-    stakeEscrow: PublicKey
-  ) {
+  static async getUnstakeByUser(connection: Connection, owner: PublicKey) {
     const stakeForFeeProgram = createStakeFeeProgram(
       connection,
       STAKE_FOR_FEE_PROGRAM_ID
     );
+
+    const [{ publicKey: stakeEscrow }] =
+      await stakeForFeeProgram.account.stakeEscrow.all([
+        { memcmp: { offset: 8, bytes: owner.toBase58() } },
+      ]);
+
     return await stakeForFeeProgram.account.unstake.all([
       {
         memcmp: {
@@ -1071,28 +1125,6 @@ export class StakeForFee {
       programId ?? STAKE_FOR_FEE_PROGRAM_ID
     );
     return await stakeForFeeProgram.account.config.all();
-  }
-
-  /**
-   * Gets all stake escrow accounts for the given owner.
-   * @param connection The connection to use.
-   * @param owner The owner to get the stake escrow accounts for.
-   * @param programId The program id of the stake-for-fee program. Defaults to the idl program id.
-   * @returns A promise that resolves with an array of stake escrow accounts.
-   */
-  static async getStakeEscrowsByOwner(
-    connection: Connection,
-    owner: PublicKey,
-    programId?: PublicKey
-  ) {
-    const stakeForFeeProgram = createStakeFeeProgram(
-      connection,
-      programId ?? STAKE_FOR_FEE_PROGRAM_ID
-    );
-
-    return stakeForFeeProgram.account.stakeEscrow.all([
-      { memcmp: { offset: 8, bytes: owner.toBase58() } },
-    ]);
   }
 
   /**
@@ -1172,6 +1204,81 @@ export class StakeForFee {
       .div(secondsToFullUnlock);
 
     return [releasedFeeA, releasedFeeB];
+  }
+
+  /**
+   * The function `getUserStakeAndClaimBalance` calculates the stake amount and unclaimed fees for a
+   * user in a staking program.
+   * @param {PublicKey} user - The `getUserStakeAndClaimBalance` function calculates the stake amount
+   * and unclaimed fees for a specific user. Here's a breakdown of the parameters used in the function:
+   * @returns The function `getUserStakeAndClaimBalance` returns an object with two properties:
+   * 1. `stakedAmount`: The amount of stake in the stake escrow account for the specified user.
+   * 2. `unclaimFe`: An object containing two properties:
+   *    - `feeA`: The total amount of fee A that can be claimed by the user, which includes both the
+   * new fee A calculated
+   *    - `feeB`: The total amount of fee B that can be claimed by the user, which includes both the
+   * new fee B calculated
+   */
+  public async getUserStakeAndClaimBalance(user: PublicKey) {
+    const stakeEscrowKey = deriveStakeEscrow(
+      this.feeVaultKey,
+      user,
+      this.stakeForFeeProgram.programId
+    );
+
+    const stakeEscrow =
+      await this.stakeForFeeProgram.account.stakeEscrow.fetchNullable(
+        stakeEscrowKey
+      );
+
+    if (!stakeEscrow) {
+      return {
+        stakeEscrow: null,
+        unclaimFee: {
+          feeA: null,
+          feeB: null,
+        },
+      };
+    }
+
+    const [releasedFeeA, releasedFeeB] = this.getFarmReleasedFees();
+
+    const effectiveStakeAmount =
+      this.accountStates.feeVault.topStakerInfo.effectiveStakeAmount;
+
+    const newFeeAPerLiquidity = effectiveStakeAmount.isZero()
+      ? new BN(0)
+      : releasedFeeA.shln(64).div(effectiveStakeAmount);
+    const newFeeBPerLiquidity = effectiveStakeAmount.isZero()
+      ? new BN(0)
+      : releasedFeeB.shln(64).div(effectiveStakeAmount);
+
+    const newCumulativeFeeAPerLiquidity =
+      this.accountStates.feeVault.topStakerInfo.cumulativeFeeAPerLiquidity.add(
+        newFeeAPerLiquidity
+      );
+    const newCumulativeFeeBPerLiquidity =
+      this.accountStates.feeVault.topStakerInfo.cumulativeFeeBPerLiquidity.add(
+        newFeeBPerLiquidity
+      );
+
+    const newFeeA = newCumulativeFeeAPerLiquidity
+      .sub(stakeEscrow.feeAPerLiquidityCheckpoint)
+      .mul(stakeEscrow.stakeAmount)
+      .shrn(64);
+
+    const newFeeB = newCumulativeFeeBPerLiquidity
+      .sub(stakeEscrow.feeBPerLiquidityCheckpoint)
+      .mul(stakeEscrow.stakeAmount)
+      .shrn(64);
+
+    return {
+      stakeEscrow,
+      unclaimFee: {
+        feeA: newFeeA.add(stakeEscrow.feeAPending),
+        feeB: newFeeB.add(stakeEscrow.feeBPending),
+      },
+    };
   }
 
   /**
