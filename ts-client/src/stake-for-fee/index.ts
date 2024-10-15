@@ -20,7 +20,6 @@ import {
 import {
   DYNAMIC_AMM_PROGRAM_ID,
   DYNAMIC_VAULT_PROGRAM_ID,
-  FULL_BALANCE_LIST_HARD_LIMIT,
   STAKE_FOR_FEE_PROGRAM_ID,
   U64_MAX,
 } from "./constants";
@@ -61,7 +60,6 @@ import {
   StakerMetadata,
   TopStakerListState,
 } from "./types";
-import Decimal from "decimal.js";
 
 type Opt = {
   stakeForFeeProgramId?: PublicKey;
@@ -506,66 +504,60 @@ export class StakeForFee {
       : null;
   }
 
-  findClosestStakeByBalanceInFullBalanceList(
-    lookupNumber: number,
-    stakeAmount: BN,
-    skipIdx: number
-  ) {
-    const closestStakers: Array<{ idx: BN; balance: BN; owner: PublicKey }> =
-      [];
+  findLargestStakerNotInTopListFromFullBalanceList(lookupNumber: number) {
+    interface StakerBalance {
+      idx: BN;
+      balance: BN;
+      owner: PublicKey;
+    }
+    const largestStakers: Array<StakerBalance> = [];
 
-    const fnFindNextClosestStakersWithSlice = (
-      startIdx: number,
-      endIdx: number
-    ) => {
-      for (let i = startIdx; i < endIdx; i++) {
-        const staker = this.accountStates.fullBalanceListState.stakers[i];
-        if (staker.balance.gte(stakeAmount)) {
-          if (staker.balance.eq(stakeAmount) && i > skipIdx) {
-            continue;
-          }
-          if (
-            this.accountStates.topStakerListState.stakers.find(
-              (s) => s.fullBalanceIndex.toNumber() == i
-            )
-          ) {
-            continue;
-          }
-          if (closestStakers.length < lookupNumber) {
-            closestStakers.push({
-              idx: new BN(i),
-              balance: staker.balance,
-              owner: staker.owner,
-            });
-          } else {
-            const biggestClosestStakers = closestStakers[lookupNumber - 1];
-            if (staker.balance.lt(biggestClosestStakers.balance)) {
-              closestStakers.pop();
-              closestStakers.push({
-                idx: new BN(i),
-                balance: staker.balance,
-                owner: staker.owner,
-              });
-            }
-          }
-          closestStakers.sort((a, b) => {
-            if (a.balance.eq(b.balance)) {
-              return a.idx.cmp(b.idx);
-            } else {
-              return a.balance.cmp(b.balance);
-            }
-          });
-        }
+    const fullBalanceListLength =
+      this.accountStates.fullBalanceListState.metadata.length.toNumber();
+
+    const stakeBalanceSorter = (a: StakerBalance, b: StakerBalance) => {
+      if (a.balance.eq(b.balance)) {
+        return a.idx.cmp(b.idx);
+      } else {
+        return b.balance.cmp(a.balance);
       }
     };
 
-    fnFindNextClosestStakersWithSlice(0, skipIdx);
-    fnFindNextClosestStakersWithSlice(
-      skipIdx + 1,
-      this.accountStates.fullBalanceListState.stakers.length
-    );
+    for (let i = 0; i < fullBalanceListLength; i++) {
+      const staker = this.accountStates.fullBalanceListState.stakers[i];
 
-    return closestStakers.map((s) =>
+      if (Boolean(staker.isInTopList)) {
+        continue;
+      }
+
+      if (largestStakers.length < lookupNumber) {
+        largestStakers.push({
+          idx: new BN(i),
+          balance: staker.balance,
+          owner: staker.owner,
+        });
+
+        largestStakers.sort(stakeBalanceSorter);
+        continue;
+      }
+
+      const largestStakerWithLowestPriority =
+        largestStakers[largestStakers.length - 1];
+
+      if (staker.balance.gt(largestStakerWithLowestPriority.balance)) {
+        largestStakers.pop();
+
+        largestStakers.push({
+          idx: new BN(i),
+          balance: staker.balance,
+          owner: staker.owner,
+        });
+
+        largestStakers.sort(stakeBalanceSorter);
+      }
+    }
+
+    return largestStakers.map((s) =>
       deriveStakeEscrow(
         this.feeVaultKey,
         s.owner,
@@ -694,12 +686,8 @@ export class StakeForFee {
     const remainingAccounts: Array<AccountMeta> = [];
 
     if (Boolean(stakeEscrowState.inTopList)) {
-      const closestStakeEscrows: Array<AccountMeta> =
-        this.findClosestStakeByBalanceInFullBalanceList(
-          3,
-          stakeEscrowState.stakeAmount.sub(amount),
-          stakeEscrowState.fullBalanceIndex.toNumber()
-        ).map((key) => {
+      const candidateToEnterTopList: Array<AccountMeta> =
+        this.findLargestStakerNotInTopListFromFullBalanceList(3).map((key) => {
           return {
             pubkey: key,
             isSigner: false,
@@ -707,7 +695,7 @@ export class StakeForFee {
           };
         });
 
-      remainingAccounts.push(...closestStakeEscrows);
+      remainingAccounts.push(...candidateToEnterTopList);
     }
 
     const transaction = await this.stakeForFeeProgram.methods
