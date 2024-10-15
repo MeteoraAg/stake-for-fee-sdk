@@ -27,7 +27,7 @@ pub const SCALE_OFFSET: u8 = 64;
 
 // Maximum length full balance list can support. It's decided based on CU consumption.
 #[cfg(feature = "local")]
-pub const FULL_BALANCE_LIST_HARD_LIMIT: u64 = 100;
+pub const FULL_BALANCE_LIST_HARD_LIMIT: u64 = 10;
 
 #[cfg(not(feature = "local"))]
 pub const FULL_BALANCE_LIST_HARD_LIMIT: u64 = 10_000;

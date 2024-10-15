@@ -16,6 +16,10 @@ pub struct StakerBalance {
     pub balance: u64,
     /// Owner pubkey, we dont need this for logic, but it is useful for indexing
     pub owner: Pubkey,
+    /// In top list
+    pub is_in_top_list: u8,
+    /// Padding
+    pub padding: [u8; 7],
 }
 
 #[derive(Debug)]

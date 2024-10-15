@@ -61,4 +61,7 @@ pub enum VaultError {
 
     #[msg("Undetermined error")]
     UndeterminedError,
+
+    #[msg("Missing smallest stake escrow")]
+    MissingSmallestStakeEscrow,
 }
