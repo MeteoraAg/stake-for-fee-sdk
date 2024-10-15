@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 declare_id!("M5c95Zio3HQ1gvQ3pjhh8BsscrDcKnN28gxnQD1E17U");
 
 #[cfg(not(feature = "local"))]
-declare_id!("sTa7e5hJXkG9gQPGrjqycxw2mfSFJmW8B5HiqQsnJ1N");
+declare_id!("fEepkSV8Bqq9JJTC1zSe4X6cW1GJUpHFkJpfJUjxo8J");
 
 mod constant;
 mod errors;
