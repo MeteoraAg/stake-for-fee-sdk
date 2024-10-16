@@ -33,6 +33,7 @@ import {
   deriveFeeVault,
   deriveFullBalanceList,
   deriveLockEscrowPda,
+  deriveLpMint,
   deriveStakeEscrow,
   deriveStakeTokenVault,
   deriveTopStakerList,
@@ -61,7 +62,6 @@ import {
   StakerMetadata,
   TopStakerListState,
 } from "./types";
-import Decimal from "decimal.js";
 
 type Opt = {
   stakeForFeeProgramId?: PublicKey;
@@ -432,6 +432,123 @@ export class StakeForFee {
     }).add(transaction);
   }
 
+  /**
+   * Creates a fee vault for the given pool.
+   *
+   * @param connection Solana connection
+   * @param pool The pool to create the fee vault for
+   * @param stakeMint The mint of the stake token
+   * @param payer The payer of the transaction. Signer.
+   * @param config The configuration account for the fee vault. Get from `getConfigs`
+   * @param tokenAMint The mint of the token A
+   * @param tokenBMint The mint of the token B
+   * @param customStartClaimFeeTimestamp The custom start claim fee timestamp. If not passed, it will default to current timestamp. Else, lock escrow can only claim fee after this timestamp. Constraint: currentTimestamp <= `customStartClaimFeeTimestamp` <= currentTimestamp + configAccount.joinWindowDuration
+   * @param opt Optional options
+   *
+   * @returns A transaction that can be signed and sent to the network
+   */
+  public static async createFeeVaultWithParams(
+    connection: Connection,
+    pool: PublicKey,
+    stakeMint: PublicKey,
+    payer: PublicKey,
+    config: PublicKey,
+    tokenAMint: PublicKey,
+    tokenBMint: PublicKey,
+    customStartClaimFeeTimestamp?: BN,
+    opt?: Opt
+  ): Promise<Transaction> {
+    const stakeForFeeProgram = createStakeFeeProgram(
+      connection,
+      opt?.stakeForFeeProgramId ?? STAKE_FOR_FEE_PROGRAM_ID
+    );
+
+    const ammProgram = createDynamicAmmProgram(
+      connection,
+      opt?.dynamicAmmProgramId ?? DYNAMIC_AMM_PROGRAM_ID
+    );
+    const feeVaultKey = deriveFeeVault(pool, stakeForFeeProgram.programId);
+    const lpMint = deriveLpMint(pool, ammProgram.programId);
+    const stakeTokenVaultKey = deriveStakeTokenVault(
+      feeVaultKey,
+      stakeForFeeProgram.programId
+    );
+    const topStakerListKey = deriveTopStakerList(
+      feeVaultKey,
+      stakeForFeeProgram.programId
+    );
+    const fullBalanceListKey = deriveFullBalanceList(
+      feeVaultKey,
+      stakeForFeeProgram.programId
+    );
+    const tokenAVaultKey = getAssociatedTokenAddressSync(
+      tokenAMint,
+      feeVaultKey,
+      true
+    );
+    const tokenBVaultKey = getAssociatedTokenAddressSync(
+      tokenBMint,
+      feeVaultKey,
+      true
+    );
+
+    const [lockEscrowPK] = deriveLockEscrowPda(
+      pool,
+      feeVaultKey,
+      ammProgram.programId
+    );
+
+    const lockEscrowAccount = await connection.getAccountInfo(lockEscrowPK);
+    const preInstructions: TransactionInstruction[] = [];
+
+    if (lockEscrowAccount === null) {
+      const createLockEscrowIx = await ammProgram.methods
+        .createLockEscrow()
+        .accounts({
+          pool,
+          lockEscrow: lockEscrowPK,
+          owner: feeVaultKey,
+          lpMint,
+          payer,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+        
+      preInstructions.push(createLockEscrowIx);
+    }
+
+    const transaction = await stakeForFeeProgram.methods
+      .initializeVault(customStartClaimFeeTimestamp ?? null)
+      .accounts({
+        config,
+        vault: feeVaultKey,
+        stakeTokenVault: stakeTokenVaultKey,
+        stakeMint,
+        topStakerList: topStakerListKey,
+        fullBalanceList: fullBalanceListKey,
+        tokenAMint,
+        tokenBMint,
+        pool,
+        tokenAVault: tokenAVaultKey,
+        tokenBVault: tokenBVaultKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        lockEscrow: lockEscrowPK,
+        payer,
+        systemProgram: SystemProgram.programId,
+      })
+      .preInstructions(preInstructions)
+      .transaction();
+
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash("confirmed");
+
+    return new Transaction({
+      blockhash,
+      lastValidBlockHeight,
+      feePayer: payer,
+    }).add(transaction);
+  }
   /**
    * Initializes a stake escrow for the given owner.
    *
