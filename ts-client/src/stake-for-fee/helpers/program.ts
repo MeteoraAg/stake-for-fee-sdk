@@ -165,7 +165,18 @@ export const getOrCreateATAInstruction = async (
   );
 
   try {
-    await connection.getAccountInfo(toAccount);
+    const account = await connection.getAccountInfo(toAccount);
+
+    if (!account) {
+      const ix = createAssociatedTokenAccountInstruction(
+        payer,
+        toAccount,
+        owner,
+        tokenMint
+      );
+
+      return { ataPubKey: toAccount, ix };
+    }
 
     return { ataPubKey: toAccount, ix: undefined };
   } catch (e) {

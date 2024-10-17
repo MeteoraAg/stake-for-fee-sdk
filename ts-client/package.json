@@ -1,6 +1,6 @@
 {
   "name": "@meteora-ag/stake-for-fee",
-  "version": "1.0.7",
+  "version": "1.0.8-rc2.19",
   "description": "",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
