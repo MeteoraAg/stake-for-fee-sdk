@@ -20,9 +20,9 @@ export function decodeFullBalanceState(
     );
 
   const stakerBalances: Array<StakerBalance> = [];
-  const stakerBalanceSize = 40;
+  const stakerBalanceSize = 48;
 
-  const fullBalanceListSlice = account.data.slice(8 + 48);
+  const fullBalanceListSlice = account.data.slice(8 + 40);
   for (let i = 0; i < metadata.length.toNumber(); i++) {
     const offset = i * stakerBalanceSize;
     const slice = fullBalanceListSlice.slice(
