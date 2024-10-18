@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { DYNAMIC_AMM_PROGRAM_ID } from "../constants";
 
 export const deriveLockEscrowPda = (
   pool: PublicKey,
@@ -55,3 +56,14 @@ export const deriveStakeEscrow = (
     programId
   )[0];
 };
+
+export const deriveLpMint = (
+  poolAddress: PublicKey,
+  programId: PublicKey
+) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("lp_mint"), poolAddress.toBuffer()],
+    new PublicKey(programId || DYNAMIC_AMM_PROGRAM_ID)
+  )[0];
+};
+
