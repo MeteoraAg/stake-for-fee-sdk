@@ -822,30 +822,35 @@ export class StakeForFee {
         continue;
       }
 
+      const stakeBalanceAscSorted = (a: StakerMetadata, b: StakerMetadata) => {
+        if (a.stakeAmount.eq(b.stakeAmount)) {
+          return a.fullBalanceIndex.cmp(b.fullBalanceIndex);
+        } else {
+          return a.stakeAmount.cmp(b.stakeAmount);
+        }
+      };
+
       if (smallestStakers.length < lookupNumber) {
         smallestStakers.push(staker);
-        smallestStakers.sort((a, b) => {
-          if (a.stakeAmount.eq(b.stakeAmount)) {
-            return a.fullBalanceIndex.cmp(b.fullBalanceIndex);
-          } else {
-            return b.stakeAmount.cmp(a.stakeAmount);
-          }
-        });
-      }
-
-      const biggestStakers = smallestStakers[lookupNumber - 1];
-      if (staker.stakeAmount.lt(biggestStakers.stakeAmount)) {
-        smallestStakers.pop();
-        smallestStakers.push(staker);
-        smallestStakers.sort((a, b) => {
-          if (a.stakeAmount.eq(b.stakeAmount)) {
-            return a.fullBalanceIndex.cmp(b.fullBalanceIndex);
-          } else {
-            return b.stakeAmount.cmp(a.stakeAmount);
-          }
-        });
+        smallestStakers.sort(stakeBalanceAscSorted);
+      } else {
+        const biggestStakers = smallestStakers[lookupNumber - 1];
+        if (staker.stakeAmount.lt(biggestStakers.stakeAmount)) {
+          smallestStakers.pop();
+          smallestStakers.push(staker);
+          smallestStakers.sort(stakeBalanceAscSorted);
+        }
       }
     }
+
+    console.log(
+      smallestStakers.map((s) => {
+        return {
+          amount: s.stakeAmount.toString(),
+          owner: s.owner.toString(),
+        };
+      })
+    );
 
     return smallestStakers.map((s) =>
       deriveStakeEscrow(
