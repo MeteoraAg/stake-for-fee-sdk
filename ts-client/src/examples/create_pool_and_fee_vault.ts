@@ -149,8 +149,6 @@ async function createPoolAndFeeVaultExample() {
     poolConfigKey
   );
 
-  // const poolKey = new PublicKey("HYsLuLVRFW5yfVjmGTu3TnabawPC8gShVpAdJTHkr5MZ");
-
   // @ts-ignore
   const pool = await AmmImpl.create(connection, poolKey);
 
