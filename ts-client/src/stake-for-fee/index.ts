@@ -802,7 +802,7 @@ export class StakeForFee {
 
       const stakeBalanceAscSorted = (a: StakerMetadata, b: StakerMetadata) => {
         if (a.stakeAmount.eq(b.stakeAmount)) {
-          return a.fullBalanceIndex.cmp(b.fullBalanceIndex);
+          return b.fullBalanceIndex.cmp(a.fullBalanceIndex);
         } else {
           return a.stakeAmount.cmp(b.stakeAmount);
         }
@@ -813,10 +813,18 @@ export class StakeForFee {
         smallestStakers.sort(stakeBalanceAscSorted);
       } else {
         const biggestStakers = smallestStakers[lookupNumber - 1];
-        if (staker.stakeAmount.lt(biggestStakers.stakeAmount)) {
+        if (staker.stakeAmount.lte(biggestStakers.stakeAmount)) {
           smallestStakers.pop();
           smallestStakers.push(staker);
           smallestStakers.sort(stakeBalanceAscSorted);
+        } else if (staker.stakeAmount.eq(biggestStakers.stakeAmount)) {
+          if (
+            staker.fullBalanceIndex.cmp(biggestStakers.fullBalanceIndex) < 0
+          ) {
+            smallestStakers.pop();
+            smallestStakers.push(staker);
+            smallestStakers.sort(stakeBalanceAscSorted);
+          }
         }
       }
     }
