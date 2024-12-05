@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## @meteora-ag/stake-for-fee [1.0.1] [PR #24](https://github.com/MeteoraAg/stake-for-fee-sdk/pull/24)
+
+### Changed
+
+- Refactor `findLargestStakerNotInTopListFromFullBalanceList` and `findReplaceableTopStaker` to reduce complexity.
+
 ## stake-for-fee [0.1.1] [PR #14](https://github.com/MeteoraAg/stake-for-fee-sdk/pull/14)
 
 ### Changed
