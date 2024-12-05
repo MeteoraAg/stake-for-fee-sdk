@@ -736,106 +736,80 @@ export class StakeForFee {
       balance: BN;
       owner: PublicKey;
     }
-    const largestStakers: Array<StakerBalance> = [];
+    const largestStakers: Array<PublicKey> = [];
 
-    const fullBalanceListLength =
-      this.accountStates.fullBalanceListState.metadata.length.toNumber();
+    const fullBalanceListWithoutTopStakers = [
+      ...this.accountStates.fullBalanceListState.stakers,
+    ].filter((s) => s.owner != PublicKey.default && !Boolean(s.isInTopList));
 
-    const stakeBalanceSorter = (a: StakerBalance, b: StakerBalance) => {
-      if (a.balance.eq(b.balance)) {
-        return a.idx.cmp(b.idx);
+    if (fullBalanceListWithoutTopStakers.length == 0) {
+      return largestStakers;
+    }
+
+    const ascSortedFullBalanceList = fullBalanceListWithoutTopStakers.sort(
+      (a, b) => {
+        if (a.balance.eq(b.balance)) {
+          // Larger index go to the front
+          return 1;
+        } else {
+          return a.balance.cmp(b.balance);
+        }
+      }
+    );
+
+    for (let i = 0; i < lookupNumber; i++) {
+      const staker = ascSortedFullBalanceList.pop();
+      if (staker) {
+        largestStakers.push(
+          deriveStakeEscrow(
+            this.feeVaultKey,
+            staker.owner,
+            this.stakeForFeeProgram.programId
+          )
+        );
       } else {
-        return b.balance.cmp(a.balance);
-      }
-    };
-
-    for (let i = 0; i < fullBalanceListLength; i++) {
-      const staker = this.accountStates.fullBalanceListState.stakers[i];
-
-      if (Boolean(staker.isInTopList)) {
-        continue;
-      }
-
-      if (largestStakers.length < lookupNumber) {
-        largestStakers.push({
-          idx: new BN(i),
-          balance: staker.balance,
-          owner: staker.owner,
-        });
-
-        largestStakers.sort(stakeBalanceSorter);
-        continue;
-      }
-
-      const largestStakerWithLowestPriority =
-        largestStakers[largestStakers.length - 1];
-
-      if (staker.balance.gt(largestStakerWithLowestPriority.balance)) {
-        largestStakers.pop();
-
-        largestStakers.push({
-          idx: new BN(i),
-          balance: staker.balance,
-          owner: staker.owner,
-        });
-
-        largestStakers.sort(stakeBalanceSorter);
+        break;
       }
     }
 
-    return largestStakers.map((s) =>
-      deriveStakeEscrow(
-        this.feeVaultKey,
-        s.owner,
-        this.stakeForFeeProgram.programId
-      )
-    );
+    return largestStakers;
   }
 
   findReplaceableTopStaker(lookupNumber: number) {
-    const smallestStakers: Array<StakerMetadata> = [];
+    const smallestStakers: Array<PublicKey> = [];
 
-    for (const staker of this.accountStates.topStakerListState.stakers) {
-      if (staker.fullBalanceIndex.isNeg()) {
-        continue;
-      }
+    const actualTopStakers = [
+      ...this.accountStates.topStakerListState.stakers,
+    ].filter((s) => !s.fullBalanceIndex.isNeg());
 
-      const stakeBalanceAscSorted = (a: StakerMetadata, b: StakerMetadata) => {
-        if (a.stakeAmount.eq(b.stakeAmount)) {
-          return b.fullBalanceIndex.cmp(a.fullBalanceIndex);
-        } else {
-          return a.stakeAmount.cmp(b.stakeAmount);
-        }
-      };
+    if (actualTopStakers.length == 0) {
+      return smallestStakers;
+    }
 
-      if (smallestStakers.length < lookupNumber) {
-        smallestStakers.push(staker);
-        smallestStakers.sort(stakeBalanceAscSorted);
+    const ascSortedTopStakers = actualTopStakers.sort((a, b) => {
+      if (a.stakeAmount.eq(b.stakeAmount)) {
+        return b.fullBalanceIndex.cmp(a.fullBalanceIndex);
       } else {
-        const biggestStakers = smallestStakers[lookupNumber - 1];
-        if (staker.stakeAmount.lte(biggestStakers.stakeAmount)) {
-          smallestStakers.pop();
-          smallestStakers.push(staker);
-          smallestStakers.sort(stakeBalanceAscSorted);
-        } else if (staker.stakeAmount.eq(biggestStakers.stakeAmount)) {
-          if (
-            staker.fullBalanceIndex.cmp(biggestStakers.fullBalanceIndex) < 0
-          ) {
-            smallestStakers.pop();
-            smallestStakers.push(staker);
-            smallestStakers.sort(stakeBalanceAscSorted);
-          }
-        }
+        return a.stakeAmount.cmp(b.stakeAmount);
+      }
+    });
+
+    for (let i = 0; i < lookupNumber; i++) {
+      const staker = ascSortedTopStakers.shift();
+      if (staker) {
+        smallestStakers.push(
+          deriveStakeEscrow(
+            this.feeVaultKey,
+            staker.owner,
+            this.stakeForFeeProgram.programId
+          )
+        );
+      } else {
+        break;
       }
     }
 
-    return smallestStakers.map((s) =>
-      deriveStakeEscrow(
-        this.feeVaultKey,
-        s.owner,
-        this.stakeForFeeProgram.programId
-      )
-    );
+    return smallestStakers;
   }
 
   /**
