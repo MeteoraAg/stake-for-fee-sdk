@@ -1,15 +1,97 @@
+import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 import Decimal from "decimal.js";
-import { getLockedEscrowPendingFee } from "./dynamic_amm";
 import {
   AccountStates,
+  FullBalanceListState,
   StakeEscrow,
+  StakerBalance,
+  StakerMetadata,
   TopStakerInfo,
   TopStakerListState,
   TopStakerListStateContext,
 } from "../types";
-import { AccountMeta, PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getLockedEscrowPendingFee } from "./dynamic_amm";
+
+export function findLargestStakerNotInTopListFromFullBalanceList(
+  lookupNumber: number,
+  fullBalanceListState: FullBalanceListState
+) {
+  const largestStakers: Array<StakerBalance> = [];
+
+  // 1. Filter out top stakers and empty slot
+  const fullBalanceListWithoutTopStakers = [...fullBalanceListState.stakers]
+    .map<[number, StakerBalance]>((s, idx) => [idx, s])
+    .filter(
+      ([_idx, s]) => s.owner != PublicKey.default && !Boolean(s.isInTopList)
+    );
+
+  if (fullBalanceListWithoutTopStakers.length == 0) {
+    return largestStakers;
+  }
+
+  // 2. Sort based on stake amount + full balance index
+  const ascSortedFullBalanceList = fullBalanceListWithoutTopStakers.sort(
+    ([a_idx, a], [b_idx, b]) => {
+      if (a.balance.eq(b.balance)) {
+        return b_idx - a_idx;
+      } else {
+        return a.balance.cmp(b.balance);
+      }
+    }
+  );
+
+  // 3. Get largest N staker
+  for (let i = 0; i < lookupNumber; i++) {
+    const stakerWithIndex = ascSortedFullBalanceList.pop();
+    if (stakerWithIndex) {
+      const [_idx, staker] = stakerWithIndex;
+      largestStakers.push(staker);
+    } else {
+      break;
+    }
+  }
+
+  return largestStakers;
+}
+
+export function findReplaceableTopStaker(
+  lookupNumber: number,
+  topStakerListState: TopStakerListState
+) {
+  const smallestStakers: Array<StakerMetadata> = [];
+
+  // 1. Filter out empty slot in top staker list
+  const actualTopStakers = [...topStakerListState.stakers].filter(
+    (s) => !s.fullBalanceIndex.isNeg()
+  );
+
+  if (actualTopStakers.length == 0) {
+    return smallestStakers;
+  }
+
+  // 2. Sort it based on full balance index + stake amount
+  const ascSortedTopStakers = actualTopStakers.sort((a, b) => {
+    if (a.stakeAmount.eq(b.stakeAmount)) {
+      // Late joiner consider smaller
+      return b.fullBalanceIndex.cmp(a.fullBalanceIndex);
+    } else {
+      return a.stakeAmount.cmp(b.stakeAmount);
+    }
+  });
+
+  // 3. Get N smallest top staker
+  for (let i = 0; i < lookupNumber; i++) {
+    const staker = ascSortedTopStakers.shift();
+    if (staker) {
+      smallestStakers.push(staker);
+    } else {
+      break;
+    }
+  }
+
+  return smallestStakers;
+}
 
 export function getTopStakerListStateEntryStakeAmount(
   topStakerListState: TopStakerListState

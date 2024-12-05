@@ -43,7 +43,11 @@ import {
   getOrCreateATAInstruction,
   getOrCreateStakeEscrowInstruction,
 } from "./helpers/program";
-import { getTopStakerListStateEntryStakeAmount } from "./helpers/staker_for_fee";
+import {
+  findLargestStakerNotInTopListFromFullBalanceList,
+  findReplaceableTopStaker,
+  getTopStakerListStateEntryStakeAmount,
+} from "./helpers/staker_for_fee";
 import {
   AccountStates,
   Clock,
@@ -731,85 +735,29 @@ export class StakeForFee {
   }
 
   findLargestStakerNotInTopListFromFullBalanceList(lookupNumber: number) {
-    interface StakerBalance {
-      idx: BN;
-      balance: BN;
-      owner: PublicKey;
-    }
-    const largestStakers: Array<PublicKey> = [];
-
-    const fullBalanceListWithoutTopStakers = [
-      ...this.accountStates.fullBalanceListState.stakers,
-    ].filter((s) => s.owner != PublicKey.default && !Boolean(s.isInTopList));
-
-    if (fullBalanceListWithoutTopStakers.length == 0) {
-      return largestStakers;
-    }
-
-    const ascSortedFullBalanceList = fullBalanceListWithoutTopStakers.sort(
-      (a, b) => {
-        if (a.balance.eq(b.balance)) {
-          // Larger index go to the front
-          return 1;
-        } else {
-          return a.balance.cmp(b.balance);
-        }
-      }
-    );
-
-    for (let i = 0; i < lookupNumber; i++) {
-      const staker = ascSortedFullBalanceList.pop();
-      if (staker) {
-        largestStakers.push(
-          deriveStakeEscrow(
-            this.feeVaultKey,
-            staker.owner,
-            this.stakeForFeeProgram.programId
-          )
-        );
-      } else {
-        break;
-      }
-    }
-
-    return largestStakers;
+    return findLargestStakerNotInTopListFromFullBalanceList(
+      lookupNumber,
+      this.accountStates.fullBalanceListState
+    ).map((s) => {
+      return deriveStakeEscrow(
+        this.feeVaultKey,
+        s.owner,
+        this.stakeForFeeProgram.programId
+      );
+    });
   }
 
   findReplaceableTopStaker(lookupNumber: number) {
-    const smallestStakers: Array<PublicKey> = [];
-
-    const actualTopStakers = [
-      ...this.accountStates.topStakerListState.stakers,
-    ].filter((s) => !s.fullBalanceIndex.isNeg());
-
-    if (actualTopStakers.length == 0) {
-      return smallestStakers;
-    }
-
-    const ascSortedTopStakers = actualTopStakers.sort((a, b) => {
-      if (a.stakeAmount.eq(b.stakeAmount)) {
-        return b.fullBalanceIndex.cmp(a.fullBalanceIndex);
-      } else {
-        return a.stakeAmount.cmp(b.stakeAmount);
-      }
+    return findReplaceableTopStaker(
+      lookupNumber,
+      this.accountStates.topStakerListState
+    ).map((s) => {
+      return deriveStakeEscrow(
+        this.feeVaultKey,
+        s.owner,
+        this.stakeForFeeProgram.programId
+      );
     });
-
-    for (let i = 0; i < lookupNumber; i++) {
-      const staker = ascSortedTopStakers.shift();
-      if (staker) {
-        smallestStakers.push(
-          deriveStakeEscrow(
-            this.feeVaultKey,
-            staker.owner,
-            this.stakeForFeeProgram.programId
-          )
-        );
-      } else {
-        break;
-      }
-    }
-
-    return smallestStakers;
   }
 
   /**
