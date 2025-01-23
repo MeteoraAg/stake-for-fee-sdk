@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## common [0.0.1] (PR #28)(https://github.com/MeteoraAg/stake-for-fee-sdk/pull/28)
+
+- PDA helper to derive accounts
+
+### Added
+
 ## @meteora-ag/stake-for-fee [1.0.1] [PR #24](https://github.com/MeteoraAg/stake-for-fee-sdk/pull/24)
 
 ### Changed
