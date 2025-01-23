@@ -1,5 +1,5 @@
 [workspace]
-members = ["stake_for_fee_interface"]
+members = ["stake_for_fee_interface", "common"]
 resolver = "2"
 
 [profile.release]
