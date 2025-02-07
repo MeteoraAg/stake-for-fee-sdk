@@ -88,7 +88,9 @@ export async function lockLiquidityToFeeVault(
 
   const poolLpAta = getAssociatedTokenAddressSync(
     pool.poolState.lpMint,
-    keypair.publicKey
+    keypair.publicKey,
+    // Only needed if dealing with off-curve addresses, like a Squad.
+    true
   );
 
   const lpAmount = await connection
