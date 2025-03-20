@@ -12,12 +12,16 @@ export const computeUnitIx = (units?: number) => {
 };
 
 export const unwrapSOLInstruction = async (owner: PublicKey) => {
-  const wSolATAAccount = getAssociatedTokenAddressSync(NATIVE_MINT, owner);
+  const wSolATAAccount = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    owner,
+    true
+  );
   if (wSolATAAccount) {
     const closedWrappedSolInstruction = createCloseAccountInstruction(
       wSolATAAccount,
       owner,
-      owner,
+      owner
     );
     return closedWrappedSolInstruction;
   }

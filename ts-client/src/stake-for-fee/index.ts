@@ -405,7 +405,8 @@ export class StakeForFee {
         connection,
         poolState.lpMint,
         lockEscrowPK,
-        payer
+        payer,
+        true
       );
 
       createEscrowAtaIx && preInstructions.push(createEscrowAtaIx);
@@ -1029,7 +1030,8 @@ export class StakeForFee {
 
     const userStakeTokenKey = getAssociatedTokenAddressSync(
       this.accountStates.feeVault.stakeMint,
-      owner
+      owner,
+      true
     );
 
     const remainingAccounts: Array<AccountMeta> = [];
