@@ -19,6 +19,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## @meteora-ag/stake-for-fee [1.1.0]
+
+Sync with stake-for-fee program [0.1.2].
+
+### Added
+
+- `withdrawStake`. Withdraws the whole stake amount directly from the stake escrow, without an unstake request. Pending fees are settled first and stay claimable with `claimFee`.
+- `getPoolLpSupply` helper. LP supply tracked by the dynamic AMM pool (`pool.lpMintSupply`). Throws when it is smaller than the LP mint supply.
+
+### Changed
+
+- `claimFee` claims all pending fees of both tokens. The stake token fee is transferred to the owner stake token ATA (created when missing) instead of being restaked. `maxFee` is now optional and ignored.
+- The unstake lock duration is no longer enforced. Ongoing unstake requests can be withdrawn immediately with `withdraw`, without waiting for their release time.
+
+**Breaking**: `getLockedEscrowPendingFee` takes the dynamic AMM pool state as the last parameter. `StakeForFee.getFarmPendingClaimFees` and `StakeForFee.getFarmReleasedFees` take `ammPool`.
+
+### Deprecated
+
+- `createFeeVault`, `createFeeVaultWithParams`, `createFeeVaultInstructions`, `initializeStakeEscrow`, `getOrCreateStakeEscrowInstruction`, `stake`, `unstake` and `cancelUnstake`. The program instructions are deprecated, so the transactions fail with `Deprecated` once they land on-chain.
+
 ## @meteora-ag/stake-for-fee [1.0.10] (PR #35)(https://github.com/MeteoraAg/stake-for-fee-sdk/pull/35)
 
 ### Fixed

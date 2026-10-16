@@ -3,21 +3,15 @@ name = "stake_for_fee_interface"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies.borsh]
-version = "^0.10"
+[lib]
+doctest = false
 
-[dependencies.num-derive]
-version = "^0.3"
+[features]
+idl-build = ["anchor-lang/idl-build"]
 
-[dependencies.num-traits]
-version = "^0.2"
+[dependencies]
+anchor-lang = { workspace = true }
+bytemuck = { version = "1.18.0", features = ["derive", "min_const_generics"] }
 
-[dependencies.serde]
-optional = true
-version = "^1.0"
-
-[dependencies.solana-program]
-version = "^1.16"
-
-[dependencies.thiserror]
-version = "^1.0"
+[lints]
+workspace = true

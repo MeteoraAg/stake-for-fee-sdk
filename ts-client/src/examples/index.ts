@@ -1,6 +1,6 @@
 import AmmImpl from "@meteora-ag/dynamic-amm-sdk";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { StakeForFee } from "../stake-for-fee";
 import {
@@ -11,7 +11,6 @@ import {
   loadKeypairFromFile,
 } from "./utils";
 import { createFeeVault, createPool, lockLiquidityToFeeVault } from "./actions";
-import { U64_MAX } from "../stake-for-fee/constants";
 
 const connection = new Connection(DEVNET_URL);
 const poolConfigKey = new PublicKey(
@@ -53,6 +52,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
 
   const pool = await AmmImpl.create(connection, poolKey);
 
+  // ⚠️ `createFeeVault` and `stake` (steps 2 and 5) are deprecated. They fail with the `Deprecated` error once the program upgrade lands on-chain.
   console.log("2. Create fee vault");
   const currentSlot = await connection.getSlot("confirmed");
   const currentOnchainTimestamp = await connection.getBlockTime(currentSlot);
@@ -111,11 +111,36 @@ async function createPoolAndInteractWithFeeVaultExample() {
     10 ** feeVault.accountStates.tokenBMint.decimals;
   console.log("Claimable Fee B", claimableFeeB);
 
-  console.log("7. Claim fee");
-  const claimFeeTx = await feeVault.claimFee(
+  // Full exit after the program deprecation: withdraw the ongoing unstake requests, the stake, then claim the fees.
+  console.log("7. Withdraw ongoing unstake requests");
+  // The unstake lock duration is no longer enforced, so they can be withdrawn immediately.
+  const unstakeList = await StakeForFee.getUnstakeByUser(
+    connection,
     keypair.publicKey,
-    new BN(U64_MAX)
+    feeVault.feeVaultKey
   );
+  for (const { publicKey: unstakeKey } of unstakeList) {
+    const withdrawTx = await feeVault.withdraw(unstakeKey, keypair.publicKey);
+    const withdrawSignature = await handleSendTransaction(
+      connection,
+      withdrawTx,
+      keypair
+    );
+    console.log("Withdraw Signature", withdrawSignature);
+  }
+
+  console.log("8. Withdraw stake");
+  const withdrawStakeTx = await feeVault.withdrawStake(keypair.publicKey);
+  const withdrawStakeSignature = await handleSendTransaction(
+    connection,
+    withdrawStakeTx,
+    keypair
+  );
+  console.log("Withdraw Stake Signature", withdrawStakeSignature);
+
+  // `withdrawStake` settles the pending fees, so claim after it to collect everything.
+  console.log("9. Claim fee");
+  const claimFeeTx = await feeVault.claimFee(keypair.publicKey);
 
   const signature = await handleSendTransaction(
     connection,
@@ -123,44 +148,6 @@ async function createPoolAndInteractWithFeeVaultExample() {
     keypair
   );
   console.log(`Claim Fee Signature`, signature);
-
-  console.log("8. Unstake");
-  const unstakeKeyPair = new Keypair();
-  const unstakeTx = await feeVault.unstake(
-    userEscrow.stakeEscrow.stakeAmount,
-    unstakeKeyPair.publicKey,
-    keypair.publicKey
-  );
-  const unstakeSignature = await handleSendTransaction(connection, unstakeTx, [
-    unstakeKeyPair,
-    keypair,
-  ]);
-  console.log("Unstake Signature", unstakeSignature);
-
-  console.log("9. Cancel unstaked");
-  const cancelUnstake = await feeVault.cancelUnstake(
-    unstakeKeyPair.publicKey,
-    keypair.publicKey
-  );
-  const cancelUnstakeSignature = await handleSendTransaction(
-    connection,
-    cancelUnstake,
-    keypair
-  );
-  console.log("Cancel Unstake Signature", cancelUnstakeSignature);
-
-  // ⚠️ This only works after unstake period is over
-  console.log("10. Withdraw unstake");
-  const withdrawUnstake = await feeVault.withdraw(
-    unstakeKeyPair.publicKey,
-    keypair.publicKey
-  );
-  const withdrawUnstakeSignature = await handleSendTransaction(
-    connection,
-    withdrawUnstake,
-    keypair
-  );
-  console.log("Withdraw Unstake Signature", withdrawUnstakeSignature);
 }
 
 createPoolAndInteractWithFeeVaultExample()
