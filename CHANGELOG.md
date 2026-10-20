@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## @meteora-ag/stake-for-fee [1.1.0]
+## @meteora-ag/stake-for-fee [2.0.0]
 
 Sync with stake-for-fee program [0.1.2].
 
