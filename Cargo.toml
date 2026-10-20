@@ -2,6 +2,12 @@
 members = ["stake_for_fee_interface", "common"]
 resolver = "2"
 
+[workspace.dependencies]
+anchor-lang = "1.2.1"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

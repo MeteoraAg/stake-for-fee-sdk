@@ -4,6 +4,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   MintLayout,
+  NATIVE_MINT,
   RawAccount,
   RawMint,
   TOKEN_PROGRAM_ID,
@@ -333,6 +334,8 @@ export class StakeForFee {
    * @param opt Optional options
    *
    * @returns A transaction that can be signed and sent to the network
+   *
+   * @deprecated The stake-for-fee program deprecated the `initialize_vault` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public static async createFeeVault(
     connection: Connection,
@@ -456,6 +459,8 @@ export class StakeForFee {
    * @param opt Optional options
    *
    * @returns A transaction that can be signed and sent to the network
+   *
+   * @deprecated The stake-for-fee program deprecated the `initialize_vault` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public static async createFeeVaultWithParams(
     connection: Connection,
@@ -567,6 +572,8 @@ export class StakeForFee {
    * @param opt Optional options
    *
    * @returns An instruction
+   *
+   * @deprecated The stake-for-fee program deprecated the `initialize_vault` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public static async createFeeVaultInstructions(
     connection: Connection,
@@ -667,6 +674,7 @@ export class StakeForFee {
    * @param owner The owner of the stake escrow. Signer.
    *
    * @returns A transaction that can be signed and sent to the network
+   * @deprecated The stake-for-fee program deprecated the `initialize_stake_escrow` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public async initializeStakeEscrow(owner: PublicKey): Promise<Transaction> {
     const stakeEscrowKey = deriveStakeEscrow(
@@ -762,6 +770,7 @@ export class StakeForFee {
 
   /**
    * Withdraws the tokens from the given unstake key and sends them to the given owner.
+   * The unstake lock duration is no longer enforced, so existing unstake requests can be withdrawn immediately.
    * @param unstakeKey The public key of the unstake account to withdraw from.
    * @param owner The public key of the account to send the withdrawn tokens to.
    * @returns A transaction that can be signed and sent to the network.
@@ -813,6 +822,119 @@ export class StakeForFee {
   }
 
   /**
+   * Claims all pending stake token and quote token fees, then withdraws the whole stake amount directly from the stake escrow, without an unstake request.
+   * The stake token fee is transferred to the owner instead of being restaked.
+   * A stake escrow without stake amount can still claim its pending fees.
+   * The transaction fails with the `NothingToExit` error (6026) when the stake escrow has no stake amount and no pending fees.
+   * Existing unstake requests are not affected. Use `withdraw` to complete them.
+   * @param owner The owner of the stake. Signer.
+   * @returns A transaction that can be signed and sent to the network.
+   */
+  public async claimFeeAndWithdrawFull(owner: PublicKey): Promise<Transaction> {
+    const stakeEscrowKey = deriveStakeEscrow(
+      this.feeVaultKey,
+      owner,
+      this.stakeForFeeProgram.programId
+    );
+
+    const stakeEscrowState =
+      await this.stakeForFeeProgram.account.stakeEscrow.fetch(stakeEscrowKey);
+
+    const quoteTokenMint = this.accountStates.ammPool.tokenAMint.equals(
+      this.accountStates.feeVault.stakeMint
+    )
+      ? this.accountStates.ammPool.tokenBMint
+      : this.accountStates.ammPool.tokenAMint;
+
+    const remainingAccounts: Array<AccountMeta> = [];
+
+    if (Boolean(stakeEscrowState.inTopList)) {
+      const candidateToEnterTopList: Array<AccountMeta> =
+        this.findLargestStakerNotInTopListFromFullBalanceList(3).map((key) => {
+          return {
+            pubkey: key,
+            isSigner: false,
+            isWritable: true,
+          };
+        });
+
+      remainingAccounts.push(...candidateToEnterTopList);
+    }
+
+    const preInstructions = [];
+
+    const { ataPubKey: userStakeToken, ix: initializeUserStakeTokenIx } =
+      await getOrCreateATAInstruction(
+        this.connection,
+        this.accountStates.feeVault.stakeMint,
+        owner
+      );
+
+    initializeUserStakeTokenIx &&
+      preInstructions.push(initializeUserStakeTokenIx);
+
+    const { ataPubKey: userQuoteToken, ix: initializeUserQuoteTokenIx } =
+      await getOrCreateATAInstruction(this.connection, quoteTokenMint, owner);
+
+    initializeUserQuoteTokenIx &&
+      preInstructions.push(initializeUserQuoteTokenIx);
+
+    // Only unwrap when the quote token fee is paid in wrapped SOL
+    const postInstructions = quoteTokenMint.equals(NATIVE_MINT)
+      ? [await unwrapSOLInstruction(owner)]
+      : [];
+
+    const transaction = await this.stakeForFeeProgram.methods
+      .claimFeeAndWithdrawFull()
+      .accounts({
+        vault: this.feeVaultKey,
+        topStakerList: this.accountStates.feeVault.topStakerList,
+        fullBalanceList: this.accountStates.feeVault.fullBalanceList,
+        stakeEscrow: stakeEscrowKey,
+        stakeTokenVault: this.accountStates.feeVault.stakeTokenVault,
+        quoteTokenVault: this.accountStates.feeVault.quoteTokenVault,
+        userStakeToken,
+        userQuoteToken,
+        owner,
+        pool: this.accountStates.feeVault.pool,
+        lpMint: this.accountStates.ammPool.lpMint,
+        lockEscrow: this.accountStates.feeVault.lockEscrow,
+        escrowVault: this.escrowVaultKey,
+        aTokenVault: this.accountStates.aVault.tokenVault,
+        bTokenVault: this.accountStates.bVault.tokenVault,
+        aVault: this.accountStates.ammPool.aVault,
+        bVault: this.accountStates.ammPool.bVault,
+        aVaultLp: this.accountStates.ammPool.aVaultLp,
+        bVaultLp: this.accountStates.ammPool.bVaultLp,
+        aVaultLpMint: this.accountStates.aVault.lpMint,
+        bVaultLpMint: this.accountStates.bVault.lpMint,
+        ammProgram: this.dynamicAmmProgram.programId,
+        vaultProgram: this.dynamicVaultProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .preInstructions(preInstructions)
+      .postInstructions(postInstructions)
+      .remainingAccounts(remainingAccounts)
+      .transaction();
+
+    const [{ blockhash, lastValidBlockHeight }, setCUIx] = await Promise.all([
+      this.connection.getLatestBlockhash(),
+      getEstimatedComputeUnitIxWithBuffer(
+        this.stakeForFeeProgram.provider.connection,
+        transaction.instructions,
+        owner
+      ),
+    ]);
+    transaction.instructions.unshift(setCUIx);
+
+    return new Transaction({
+      blockhash,
+      lastValidBlockHeight,
+      feePayer: owner,
+    }).add(transaction);
+  }
+
+  /**
    * Requests to unstake a given amount of tokens from the vault.
    * Creates a new `Unstake` account and initializes it to the given owner.
    *
@@ -820,6 +942,8 @@ export class StakeForFee {
    * @param unstakeKeypair The new unstake account. Arbitrarily generated. Signer.
    * @param owner The owner of the stake. Signer.
    * @returns The transaction to execute the unstake instruction
+   * @deprecated The stake-for-fee program deprecated the `request_unstake` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
+   * Use `claimFeeAndWithdrawFull` to withdraw the staked tokens instead.
    */
   public async unstake(
     amount: BN,
@@ -904,6 +1028,8 @@ export class StakeForFee {
    * @param owner Owner of stake escrow.
    * @param maxFee Max fee
    * @returns Transaction
+   * @deprecated The stake-for-fee program deprecated the `claim_fee` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
+   * Use `claimFeeAndWithdrawFull` to claim the pending fees instead.
    */
   public async claimFee(owner: PublicKey, maxFee: BN): Promise<Transaction> {
     const stakeEscrowKey = deriveStakeEscrow(
@@ -1004,6 +1130,7 @@ export class StakeForFee {
    * @param owner The payer for fee and account rental. Signer.
    * @param replaceableTopStakerCount The number of top stakers that can be replaced. Default is 2 (Max = 2).
    * @returns The transaction to execute the stake instruction
+   * @deprecated The stake-for-fee program deprecated the `stake` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public async stake(
     maxAmount: BN,
@@ -1101,6 +1228,7 @@ export class StakeForFee {
    * @param unstakeKey The public key of the unstake account to cancel.
    * @param owner The public key of the owner of the stake.
    * @returns A transaction to execute the cancel unstake instruction.
+   * @deprecated The stake-for-fee program deprecated the `cancel_unstake` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
    */
   public async cancelUnstake(
     unstakeKey: PublicKey,
@@ -1301,8 +1429,9 @@ export class StakeForFee {
         return acc;
       }, new Map<string, LockEscrow>());
 
+    const poolStates = Array.from(poolAccountsMap.values());
     const poolAccountsToFetch = chunks(
-      Array.from(poolAccountsMap.values()).flatMap(
+      poolStates.flatMap(
         ({ aVault, aVaultLp, bVault, bVaultLp, lpMint }) => {
           const aVaultLpMint =
             VAULT_WITH_NON_PDA_BASED_LP_MINTS.get(aVault.toBase58()) ??
@@ -1348,6 +1477,7 @@ export class StakeForFee {
         aVaultLpMint: RawMint;
         bVaultLpMint: RawMint;
         poolLpMint: RawMint;
+        ammPool: DynamicPool;
       }
     >();
     for (let i = 0; i < poolLpAccounts.length; i += 7) {
@@ -1397,6 +1527,7 @@ export class StakeForFee {
         aVaultLpMint,
         bVaultLpMint,
         poolLpMint,
+        ammPool: poolStates[i / 7],
       });
     }
 
@@ -1418,6 +1549,7 @@ export class StakeForFee {
         aVaultLpMint: poolInfoAccounts.aVaultLpMint,
         bVaultLpMint: poolInfoAccounts.bVaultLpMint,
         poolLpMint: poolInfoAccounts.poolLpMint,
+        ammPool: poolInfoAccounts.ammPool,
       });
 
       const effectiveStakeAmount = feeVault.topStakerInfo.effectiveStakeAmount;
@@ -1546,6 +1678,7 @@ export class StakeForFee {
     aVaultLpMint,
     bVaultLpMint,
     poolLpMint,
+    ammPool,
   }: {
     feeVault: FeeVault;
     clock: Clock;
@@ -1557,6 +1690,7 @@ export class StakeForFee {
     aVaultLpMint: RawMint;
     bVaultLpMint: RawMint;
     poolLpMint: RawMint;
+    ammPool: DynamicPool;
   }) {
     return getLockedEscrowPendingFee(
       clock.unixTimestamp,
@@ -1568,7 +1702,8 @@ export class StakeForFee {
       bVaultLp,
       aVaultLpMint,
       bVaultLpMint,
-      poolLpMint
+      poolLpMint,
+      ammPool
     );
   }
 
@@ -1587,6 +1722,7 @@ export class StakeForFee {
     aVaultLpMint,
     bVaultLpMint,
     poolLpMint,
+    ammPool,
   }: {
     feeVault: FeeVault;
     clock: Clock;
@@ -1598,6 +1734,7 @@ export class StakeForFee {
     aVaultLpMint: RawMint;
     bVaultLpMint: RawMint;
     poolLpMint: RawMint;
+    ammPool: DynamicPool;
   }) {
     const [newFeeA, newFeeB] = this.getFarmPendingClaimFees({
       feeVault,
@@ -1610,6 +1747,7 @@ export class StakeForFee {
       aVaultLpMint,
       bVaultLpMint,
       poolLpMint,
+      ammPool,
     });
 
     const newLockedFeeA = feeVault.topStakerInfo.lockedFeeA.add(newFeeA);
@@ -1693,6 +1831,7 @@ export class StakeForFee {
       aVaultLpMint: this.accountStates.aVaultLpMint,
       bVaultLpMint: this.accountStates.bVaultLpMint,
       poolLpMint: this.accountStates.poolLpMint,
+      ammPool: this.accountStates.ammPool,
     });
 
     const effectiveStakeAmount =
@@ -1752,6 +1891,7 @@ export class StakeForFee {
       aVaultLpMint: this.accountStates.aVaultLpMint,
       bVaultLpMint: this.accountStates.bVaultLpMint,
       poolLpMint: this.accountStates.poolLpMint,
+      ammPool: this.accountStates.ammPool,
     });
 
     const effectiveStakeAmount =

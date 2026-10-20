@@ -53,6 +53,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
 
   const pool = await AmmImpl.create(connection, poolKey);
 
+  // ⚠️ Deprecated. `createFeeVault` fails with the `Deprecated` error once it lands on-chain.
   console.log("2. Create fee vault");
   const currentSlot = await connection.getSlot("confirmed");
   const currentOnchainTimestamp = await connection.getBlockTime(currentSlot);
@@ -81,6 +82,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
   console.log("4. Connect to the fee vault");
   const feeVault = await StakeForFee.create(connection, poolKey);
 
+  // ⚠️ Deprecated. `stake` fails with the `Deprecated` error once it lands on-chain.
   console.log("5. Stake amount");
   const stakeAmount = new BN(
     (BigInt(stakeFarmAmount) * BigInt(mintANativeAmountMultiplier)).toString()
@@ -111,6 +113,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
     10 ** feeVault.accountStates.tokenBMint.decimals;
   console.log("Claimable Fee B", claimableFeeB);
 
+  // ⚠️ Deprecated. `claimFee` fails with the `Deprecated` error once it lands on-chain. Use `claimFeeAndWithdrawFull` instead.
   console.log("7. Claim fee");
   const claimFeeTx = await feeVault.claimFee(
     keypair.publicKey,
@@ -124,6 +127,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
   );
   console.log(`Claim Fee Signature`, signature);
 
+  // ⚠️ Deprecated. `unstake` fails with the `Deprecated` error once it lands on-chain. Use `claimFeeAndWithdrawFull` instead.
   console.log("8. Unstake");
   const unstakeKeyPair = new Keypair();
   const unstakeTx = await feeVault.unstake(
@@ -137,6 +141,7 @@ async function createPoolAndInteractWithFeeVaultExample() {
   ]);
   console.log("Unstake Signature", unstakeSignature);
 
+  // ⚠️ Deprecated. `cancelUnstake` fails with the `Deprecated` error once it lands on-chain.
   console.log("9. Cancel unstaked");
   const cancelUnstake = await feeVault.cancelUnstake(
     unstakeKeyPair.publicKey,
