@@ -322,11 +322,21 @@ export type StakeForFee = {
     {
       "name": "claimFee",
       "docs": [
-        "Claim all pending stake token and quote token fees to the user. The program is deprecated, so the stake token fee is no longer restaked."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
           "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
           "isMut": true,
           "isSigner": false
         },
@@ -336,12 +346,13 @@ export type StakeForFee = {
           "isSigner": false
         },
         {
-          "name": "userQuoteToken",
+          "name": "smallestStakeEscrow",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
-          "name": "userStakeToken",
+          "name": "userQuoteToken",
           "isMut": true,
           "isSigner": false
         },
@@ -446,12 +457,17 @@ export type StakeForFee = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "maxFee",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "requestUnstake",
       "docs": [
-        "Deprecated. Use `withdraw_stake` instead."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
@@ -787,9 +803,11 @@ export type StakeForFee = {
       "args": []
     },
     {
-      "name": "withdrawStake",
+      "name": "claimFeeAndWithdrawFull",
       "docs": [
-        "Withdraw all staked tokens directly from the stake escrow, without an unstake request and lock duration."
+        "Claim all pending stake and quote token fees to the user, then withdraw the whole stake amount",
+        "directly from the stake escrow, without an unstake request and lock duration.",
+        "An existing unstake request is not affected; use `withdraw` to complete it."
       ],
       "accounts": [
         {
@@ -824,6 +842,11 @@ export type StakeForFee = {
         },
         {
           "name": "userStakeToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userQuoteToken",
           "isMut": true,
           "isSigner": false
         },
@@ -2575,6 +2598,11 @@ export type StakeForFee = {
       "code": 6025,
       "name": "InvalidVaultLpSupply",
       "msg": "Invalid vault LP supply accounting"
+    },
+    {
+      "code": 6026,
+      "name": "NothingToExit",
+      "msg": "Nothing to exit"
     }
   ]
 };
@@ -2903,11 +2931,21 @@ export const IDL: StakeForFee = {
     {
       "name": "claimFee",
       "docs": [
-        "Claim all pending stake token and quote token fees to the user. The program is deprecated, so the stake token fee is no longer restaked."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
           "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
           "isMut": true,
           "isSigner": false
         },
@@ -2917,12 +2955,13 @@ export const IDL: StakeForFee = {
           "isSigner": false
         },
         {
-          "name": "userQuoteToken",
+          "name": "smallestStakeEscrow",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "isOptional": true
         },
         {
-          "name": "userStakeToken",
+          "name": "userQuoteToken",
           "isMut": true,
           "isSigner": false
         },
@@ -3027,12 +3066,17 @@ export const IDL: StakeForFee = {
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "maxFee",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "requestUnstake",
       "docs": [
-        "Deprecated. Use `withdraw_stake` instead."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
@@ -3368,9 +3412,11 @@ export const IDL: StakeForFee = {
       "args": []
     },
     {
-      "name": "withdrawStake",
+      "name": "claimFeeAndWithdrawFull",
       "docs": [
-        "Withdraw all staked tokens directly from the stake escrow, without an unstake request and lock duration."
+        "Claim all pending stake and quote token fees to the user, then withdraw the whole stake amount",
+        "directly from the stake escrow, without an unstake request and lock duration.",
+        "An existing unstake request is not affected; use `withdraw` to complete it."
       ],
       "accounts": [
         {
@@ -3405,6 +3451,11 @@ export const IDL: StakeForFee = {
         },
         {
           "name": "userStakeToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userQuoteToken",
           "isMut": true,
           "isSigner": false
         },
@@ -5156,6 +5207,11 @@ export const IDL: StakeForFee = {
       "code": 6025,
       "name": "InvalidVaultLpSupply",
       "msg": "Invalid vault LP supply accounting"
+    },
+    {
+      "code": 6026,
+      "name": "NothingToExit",
+      "msg": "Nothing to exit"
     }
   ]
 };

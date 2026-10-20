@@ -200,7 +200,7 @@
     {
       "name": "claim_fee",
       "docs": [
-        "Claim all pending stake token and quote token fees to the user. The program is deprecated, so the stake token fee is no longer restaked."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "discriminator": [
         169,
@@ -221,15 +221,30 @@
           ]
         },
         {
+          "name": "top_staker_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "full_balance_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
           "name": "stake_escrow",
           "writable": true
         },
         {
-          "name": "user_quote_token",
-          "writable": true
+          "name": "smallest_stake_escrow",
+          "writable": true,
+          "optional": true
         },
         {
-          "name": "user_stake_token",
+          "name": "user_quote_token",
           "writable": true
         },
         {
@@ -245,6 +260,173 @@
           "relations": [
             "vault"
           ]
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "stake_escrow"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "lp_mint",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "lock_escrow",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true
+        },
+        {
+          "name": "a_token_vault",
+          "writable": true
+        },
+        {
+          "name": "b_token_vault",
+          "writable": true
+        },
+        {
+          "name": "a_vault",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "b_vault",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "a_vault_lp",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "b_vault_lp",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "a_vault_lp_mint",
+          "writable": true
+        },
+        {
+          "name": "b_vault_lp_mint",
+          "writable": true
+        },
+        {
+          "name": "amm_program",
+          "address": "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB"
+        },
+        {
+          "name": "vault_program",
+          "address": "24Uqj9JCLxUeoC3hGfh5W3s9FM9uCHDS2SG3LYwBpyTi"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_fee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "claim_fee_and_withdraw_full",
+      "docs": [
+        "Claim all pending stake and quote token fees to the user, then withdraw the whole stake amount",
+        "directly from the stake escrow, without an unstake request and lock duration.",
+        "An existing unstake request is not affected; use `withdraw` to complete it."
+      ],
+      "discriminator": [
+        111,
+        221,
+        3,
+        68,
+        228,
+        8,
+        251,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "stake_escrow"
+          ]
+        },
+        {
+          "name": "top_staker_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "full_balance_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "stake_escrow",
+          "writable": true
+        },
+        {
+          "name": "stake_token_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "quote_token_vault",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "user_stake_token",
+          "writable": true
+        },
+        {
+          "name": "user_quote_token",
+          "writable": true
         },
         {
           "name": "owner",
@@ -887,7 +1069,7 @@
     {
       "name": "request_unstake",
       "docs": [
-        "Deprecated. Use `withdraw_stake` instead."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "discriminator": [
         44,
@@ -1356,162 +1538,6 @@
         }
       ],
       "args": []
-    },
-    {
-      "name": "withdraw_stake",
-      "docs": [
-        "Withdraw all staked tokens directly from the stake escrow, without an unstake request and lock duration."
-      ],
-      "discriminator": [
-        153,
-        8,
-        22,
-        138,
-        105,
-        176,
-        87,
-        66
-      ],
-      "accounts": [
-        {
-          "name": "vault",
-          "writable": true,
-          "relations": [
-            "stake_escrow"
-          ]
-        },
-        {
-          "name": "top_staker_list",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "full_balance_list",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "stake_escrow",
-          "writable": true
-        },
-        {
-          "name": "stake_token_vault",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "quote_token_vault",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "user_stake_token",
-          "writable": true
-        },
-        {
-          "name": "owner",
-          "signer": true,
-          "relations": [
-            "stake_escrow"
-          ]
-        },
-        {
-          "name": "pool",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "lp_mint",
-          "writable": true,
-          "relations": [
-            "pool"
-          ]
-        },
-        {
-          "name": "lock_escrow",
-          "writable": true,
-          "relations": [
-            "vault"
-          ]
-        },
-        {
-          "name": "escrow_vault",
-          "writable": true
-        },
-        {
-          "name": "a_token_vault",
-          "writable": true
-        },
-        {
-          "name": "b_token_vault",
-          "writable": true
-        },
-        {
-          "name": "a_vault",
-          "writable": true,
-          "relations": [
-            "pool"
-          ]
-        },
-        {
-          "name": "b_vault",
-          "writable": true,
-          "relations": [
-            "pool"
-          ]
-        },
-        {
-          "name": "a_vault_lp",
-          "writable": true,
-          "relations": [
-            "pool"
-          ]
-        },
-        {
-          "name": "b_vault_lp",
-          "writable": true,
-          "relations": [
-            "pool"
-          ]
-        },
-        {
-          "name": "a_vault_lp_mint",
-          "writable": true
-        },
-        {
-          "name": "b_vault_lp_mint",
-          "writable": true
-        },
-        {
-          "name": "amm_program",
-          "address": "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB"
-        },
-        {
-          "name": "vault_program",
-          "address": "24Uqj9JCLxUeoC3hGfh5W3s9FM9uCHDS2SG3LYwBpyTi"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "event_authority"
-        },
-        {
-          "name": "program"
-        }
-      ],
-      "args": []
     }
   ],
   "accounts": [
@@ -1947,6 +1973,11 @@
       "code": 6025,
       "name": "InvalidVaultLpSupply",
       "msg": "Invalid vault LP supply accounting"
+    },
+    {
+      "code": 6026,
+      "name": "NothingToExit",
+      "msg": "Nothing to exit"
     }
   ],
   "types": [
