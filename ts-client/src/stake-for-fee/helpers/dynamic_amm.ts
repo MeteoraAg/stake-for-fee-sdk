@@ -4,11 +4,11 @@ import {
   DynamicVault,
   FeeVault,
   LockEscrow,
-  MIN_LOCK_ESCROW_CLAIM_FEE_DURATION,
 } from "../types";
 import {
   getAmountByShare,
   getAmountByShare as getAmountByShareWithLockedProfit,
+  getVaultLpSupply,
 } from "./dynamic_vault";
 import { RawAccount, RawMint } from "@solana/spl-token";
 import Decimal from "decimal.js";
@@ -17,6 +17,17 @@ export function chunks<T>(array: T[], size: number): T[][] {
   return Array.apply(0, new Array(Math.ceil(array.length / size))).map(
     (_, index) => array.slice(index * size, (index + 1) * size)
   );
+}
+
+/**
+ * LP supply tracked by the pool. Must be >= on-chain lp mint supply, else the pool accounting is not patched yet.
+ * @throws When the tracked supply is smaller than the LP mint supply.
+ */
+export function getPoolLpSupply(pool: DynamicPool, lpMintSupply: BN) {
+  if (pool.lpMintSupply.lt(lpMintSupply)) {
+    throw new Error("Invalid pool LP supply accounting");
+  }
+  return pool.lpMintSupply;
 }
 
 export function getTokenBalances(
@@ -32,14 +43,14 @@ export function getTokenBalances(
     currentTime,
     aVault,
     new BN(aVaultLp.amount.toString()),
-    new BN(aVaultLpMint.supply.toString())
+    getVaultLpSupply(aVault, new BN(aVaultLpMint.supply.toString()))
   );
 
   const tokenBAmount = getAmountByShareWithLockedProfit(
     currentTime,
     bVault,
     new BN(bVaultLp.amount.toString()),
-    new BN(bVaultLpMint.supply.toString())
+    getVaultLpSupply(bVault, new BN(bVaultLpMint.supply.toString()))
   );
 
   return [tokenAAmount, tokenBAmount];
@@ -70,19 +81,19 @@ export function getLockedEscrowPendingFee(
   bVaultLp: RawAccount,
   aVaultLpMint: RawMint,
   bVaultLpMint: RawMint,
-  poolLpMint: RawMint
+  poolLpMint: RawMint,
+  pool: DynamicPool
 ) {
-  if (currentTime.lte(feeVault.topStakerInfo.lastClaimFeeAt)) {
+  // Lock escrow fee is claimed only once. The remaining fee is never claimed.
+  // The program skips the claim of an empty lock escrow, but still marks the final fee as claimed.
+  if (Boolean(feeVault.finalFeeClaimed) || lockEscrow.totalLockedAmount.isZero()) {
     return [new BN(0), new BN(0)];
   }
 
-  const secondsElapsedSinceLastClaim = currentTime.sub(
-    feeVault.topStakerInfo.lastClaimFeeAt
+  const poolLpSupply = getPoolLpSupply(
+    pool,
+    new BN(poolLpMint.supply.toString())
   );
-
-  if (secondsElapsedSinceLastClaim.lt(MIN_LOCK_ESCROW_CLAIM_FEE_DURATION)) {
-    return [new BN(0), new BN(0)];
-  }
 
   const [tokenAAmount, tokenBAmount] = getTokenBalances(
     currentTime,
@@ -97,7 +108,7 @@ export function getLockedEscrowPendingFee(
   const currentLpPerToken = getVirtualPrice(
     tokenAAmount,
     tokenBAmount,
-    new BN(poolLpMint.supply.toString())
+    poolLpSupply
   );
 
   const newFee = currentLpPerToken.gt(lockEscrow.lpPerToken)
@@ -106,30 +117,33 @@ export function getLockedEscrowPendingFee(
         .div(currentLpPerToken)
     : new BN(0);
 
-  if (newFee.isZero()) {
+  // The dynamic AMM claims the unclaimed pending fee together with the new fee
+  const totalFee = newFee.add(lockEscrow.unclaimedFeePending);
+
+  if (totalFee.isZero()) {
     return [new BN(0), new BN(0)];
   }
 
-  const aVaultLpToBurn = newFee
+  const aVaultLpToBurn = totalFee
     .mul(new BN(aVaultLp.amount.toString()))
-    .div(new BN(poolLpMint.supply.toString()));
+    .div(poolLpSupply);
 
-  const bVaultLpToBurn = newFee
+  const bVaultLpToBurn = totalFee
     .mul(new BN(bVaultLp.amount.toString()))
-    .div(new BN(poolLpMint.supply.toString()));
+    .div(poolLpSupply);
 
   const feeA = getAmountByShare(
     currentTime,
     aVault,
     aVaultLpToBurn,
-    new BN(aVaultLpMint.supply.toString())
+    getVaultLpSupply(aVault, new BN(aVaultLpMint.supply.toString()))
   );
 
   const feeB = getAmountByShare(
     currentTime,
     bVault,
     bVaultLpToBurn,
-    new BN(bVaultLpMint.supply.toString())
+    getVaultLpSupply(bVault, new BN(bVaultLpMint.supply.toString()))
   );
 
   return [feeA, feeB];

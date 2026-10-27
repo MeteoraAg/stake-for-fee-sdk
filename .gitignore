@@ -9,3 +9,4 @@ test-ledger
 
 ts-client/dist
 ts-client/.env
+ts-client/scripts
