@@ -102,6 +102,7 @@ export function createDynamicVaultProgram(
  * @param payerKey The payer to pay for the account rent.
  * @param programId The program id of the stake-for-fee program.
  * @returns An object containing the stake escrow key and the instruction to create the account if it doesn't exist.
+ * @deprecated The stake-for-fee program deprecated the `initialize_stake_escrow` instruction. The transaction will fail with the `Deprecated` error (6023) once it lands on-chain.
  */
 export async function getOrCreateStakeEscrowInstruction(
   connection: Connection,

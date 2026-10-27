@@ -51,6 +51,9 @@ export interface TopStakerListState {
   stakers: Array<StakerMetadata>;
 }
 
+/**
+ * @deprecated The stake-for-fee program removed the minimum lock escrow claim fee duration. The lock escrow fee is claimed only once.
+ */
 export const MIN_LOCK_ESCROW_CLAIM_FEE_DURATION: BN = new BN(300);
 
 // Dynamic amm program
