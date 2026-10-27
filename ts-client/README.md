@@ -46,7 +46,52 @@ const m3m3 = await StakeForFee.create(connection, poolAddress);
 
 3. To interact with the StakeForFee
 
-- Stake
+> **Deprecated**
+>
+> - `claimFee` and `unstake`. Use `claimFeeAndWithdrawFull` instead.
+> - `createFeeVault`, `createFeeVaultWithParams`, `createFeeVaultInstructions`, `initializeStakeEscrow`, `getOrCreateStakeEscrowInstruction`, `stake`, `cancelUnstake` and `MIN_LOCK_ESCROW_CLAIM_FEE_DURATION`.
+
+> **Warning**
+>
+> - Stop creating stake-for-fee vaults.
+> - Do not create a DAMM lock escrow owned by a stake-for-fee vault PDA, or lock LP into one, e.g. with `AmmImpl.lockLiquidity` and the fee vault as owner.
+
+- Full exit (deprecation)
+
+Full exit for stakers after the program deprecation. Withdraw every ongoing unstake request, then claim all pending fees and withdraw the stake in one transaction with `claimFeeAndWithdrawFull`.
+
+```ts
+// 1. Withdraw every ongoing unstake request. They no longer wait for the unstake lock duration.
+const unstakeList = await StakeForFee.getUnstakeByUser(
+  connection,
+  mockWallet.publicKey,
+  feeFarm.feeVaultKey
+);
+for (const { publicKey: unstakeKey } of unstakeList) {
+  const withdrawTx = await feeFarm.withdraw(unstakeKey, mockWallet.publicKey);
+  await provider.sendAndConfirm(withdrawTx);
+}
+
+// 2. Claim all pending fees, then withdraw the whole stake amount.
+// It fails with `NothingToExit` when there is no stake amount and no pending fees, so skip it in that case.
+await feeFarm.refreshStates();
+const { stakeEscrow, unclaimFee } = await feeFarm.getUserStakeAndClaimBalance(
+  mockWallet.publicKey
+);
+if (
+  stakeEscrow &&
+  (!stakeEscrow.stakeAmount.isZero() ||
+    !unclaimFee.feeA.isZero() ||
+    !unclaimFee.feeB.isZero())
+) {
+  const claimFeeAndWithdrawFullTx = await feeFarm.claimFeeAndWithdrawFull(
+    mockWallet.publicKey
+  );
+  await provider.sendAndConfirm(claimFeeAndWithdrawFullTx);
+}
+```
+
+- Stake (deprecated)
 
 ```ts
 const stakeAmount = new BN(
@@ -76,7 +121,22 @@ const claimableFeeB = fromLamports(
 );
 ```
 
-- Claim Fee
+- Claim fee and withdraw full
+
+```ts
+// Claims all pending stake token and quote token fees, then withdraws the whole stake amount without an unstake request.
+// The stake token fee is transferred to the owner instead of being restaked.
+// A stake escrow without stake amount can still claim its pending fees.
+// Fails with `NothingToExit` when the stake escrow has no stake amount and no pending fees.
+const claimFeeAndWithdrawFullTx = await feeVault.claimFeeAndWithdrawFull(
+  mockWallet.publicKey
+);
+const claimFeeAndWithdrawFullTxHash = await provider.sendAndConfirm(
+  claimFeeAndWithdrawFullTx
+); // Transaction hash
+```
+
+- Claim Fee (deprecated, use `claimFeeAndWithdrawFull`)
 
 ```ts
 const claimFeeTx = await feeVault.claimFee(
@@ -86,7 +146,7 @@ const claimFeeTx = await feeVault.claimFee(
 const claimfeeTxHash = await provider.sendAndConfirm(claimFeeTx); // Transaction hash
 ```
 
-- Unstake
+- Unstake (deprecated, use `claimFeeAndWithdrawFull`)
 
 ```ts
 const unstakeKeyPair = new Keypair();
@@ -99,14 +159,14 @@ unstakeTx.partialSign(unstakeKeyPair); // Make sure to partial sign unstakeKeypa
 const unstakeTxHash = await provider.sendAndConfirm(unstakeTx); // Transaction hash
 ```
 
-- Get unstake period (Seconds)
+- Get unstake period (Seconds) (deprecated)
 
 ```ts
 const unstakePeriodInSeconds =
   feeFarm.accountStates.feeVault.configuration.unstakeLockDuration.toNumber();
 ```
 
-- Cancel unstake
+- Cancel unstake (deprecated)
 
 ```ts
 const cancelUnstakeTx = await feeFarm.cancelUnstake(

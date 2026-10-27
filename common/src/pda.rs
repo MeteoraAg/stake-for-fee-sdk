@@ -1,4 +1,4 @@
-use solana_sdk::pubkey::Pubkey;
+use anchor_lang::prelude::Pubkey;
 
 pub fn derive_m3m3_vault_key(pool_key: Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"vault", pool_key.as_ref()], &m3m3::ID).0

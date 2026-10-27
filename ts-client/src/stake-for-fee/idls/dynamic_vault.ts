@@ -1319,7 +1319,33 @@ export type Vault = {
               "type": {
                 "array": [
                   "publicKey",
-                  30
+                  29
+                ]
+              }
+            },
+            {
+              "name": "version",
+              "docs": [
+                "Vault version. 0 = legacy (LP supply from lp_mint.supply), 1 = LP supply tracked in `total_lp_supply`"
+              ],
+              "type": "u8"
+            },
+            {
+              "name": "totalLpSupply",
+              "docs": [
+                "Total LP supply tracked by the vault (only valid when version = 1)"
+              ],
+              "type": "u64"
+            },
+            {
+              "name": "padding0",
+              "docs": [
+                "Padding, keeps the layout compatible with the legacy 30th strategy slot"
+              ],
+              "type": {
+                "array": [
+                  "u8",
+                  23
                 ]
               }
             },
@@ -3133,7 +3159,33 @@ export type Vault = {
               "type": {
                 "array": [
                   "publicKey",
-                  30
+                  29
+                ]
+              }
+            },
+            {
+              "name": "version",
+              "docs": [
+                "Vault version. 0 = legacy (LP supply from lp_mint.supply), 1 = LP supply tracked in `total_lp_supply`"
+              ],
+              "type": "u8"
+            },
+            {
+              "name": "totalLpSupply",
+              "docs": [
+                "Total LP supply tracked by the vault (only valid when version = 1)"
+              ],
+              "type": "u64"
+            },
+            {
+              "name": "padding0",
+              "docs": [
+                "Padding, keeps the layout compatible with the legacy 30th strategy slot"
+              ],
+              "type": {
+                "array": [
+                  "u8",
+                  23
                 ]
               }
             },

@@ -1,5 +1,5 @@
 export type Amm = {
-  version: "0.5.1";
+  version: "0.5.2";
   name: "amm";
   docs: ["Program for AMM"];
   instructions: [
@@ -2552,6 +2552,17 @@ export type Amm = {
             };
           },
           {
+            name: "partnerInfo";
+            type: {
+              defined: "PartnerInfo";
+            };
+          },
+          {
+            name: "lpMintSupply";
+            docs: ["LP mint supply tracked by the pool"];
+            type: "u64";
+          },
+          {
             name: "padding";
             docs: ["Padding for future pool field"];
             type: {
@@ -2708,15 +2719,46 @@ export type Amm = {
             name: "padding0";
             docs: ["Padding 0"];
             type: {
-              array: ["u8", 14];
+              array: ["u8", 6];
             };
           },
           {
-            name: "padding";
+            name: "padding1";
             docs: ["Padding 1"];
             type: {
-              array: ["u128", 24];
+              array: ["u64", 20];
             };
+          },
+          {
+            name: "padding2";
+            docs: ["Padding 2"];
+            type: {
+              array: ["u64", 21];
+            };
+          }
+        ];
+      };
+    },
+    {
+      name: "PartnerInfo";
+      type: {
+        kind: "struct";
+        fields: [
+          {
+            name: "feeNumerator";
+            type: "u64";
+          },
+          {
+            name: "partnerAuthority";
+            type: "publicKey";
+          },
+          {
+            name: "pendingFeeA";
+            type: "u64";
+          },
+          {
+            name: "pendingFeeB";
+            type: "u64";
           }
         ];
       };
@@ -3616,7 +3658,7 @@ export type Amm = {
 };
 
 export const IDL: Amm = {
-  version: "0.5.1",
+  version: "0.5.2",
   name: "amm",
   docs: ["Program for AMM"],
   instructions: [
@@ -6169,6 +6211,17 @@ export const IDL: Amm = {
             },
           },
           {
+            name: "partnerInfo",
+            type: {
+              defined: "PartnerInfo",
+            },
+          },
+          {
+            name: "lpMintSupply",
+            docs: ["LP mint supply tracked by the pool"],
+            type: "u64",
+          },
+          {
             name: "padding",
             docs: ["Padding for future pool field"],
             type: {
@@ -6325,15 +6378,46 @@ export const IDL: Amm = {
             name: "padding0",
             docs: ["Padding 0"],
             type: {
-              array: ["u8", 14],
+              array: ["u8", 6],
             },
           },
           {
-            name: "padding",
+            name: "padding1",
             docs: ["Padding 1"],
             type: {
-              array: ["u128", 24],
+              array: ["u64", 20],
             },
+          },
+          {
+            name: "padding2",
+            docs: ["Padding 2"],
+            type: {
+              array: ["u64", 21],
+            },
+          },
+        ],
+      },
+    },
+    {
+      name: "PartnerInfo",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "feeNumerator",
+            type: "u64",
+          },
+          {
+            name: "partnerAuthority",
+            type: "publicKey",
+          },
+          {
+            name: "pendingFeeA",
+            type: "u64",
+          },
+          {
+            name: "pendingFeeB",
+            type: "u64",
           },
         ],
       },

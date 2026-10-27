@@ -1,9 +1,12 @@
 export type StakeForFee = {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "stake_for_fee",
   "instructions": [
     {
       "name": "initializeVault",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -119,6 +122,9 @@ export type StakeForFee = {
     },
     {
       "name": "initializeStakeEscrow",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -170,6 +176,9 @@ export type StakeForFee = {
     },
     {
       "name": "stake",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -313,7 +322,7 @@ export type StakeForFee = {
     {
       "name": "claimFee",
       "docs": [
-        "The endpoint will only claim the quote token (SOL or USDC). The meme token will be automatically restaked."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
@@ -457,6 +466,9 @@ export type StakeForFee = {
     },
     {
       "name": "requestUnstake",
+      "docs": [
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -598,6 +610,9 @@ export type StakeForFee = {
     },
     {
       "name": "cancelUnstake",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -735,6 +750,9 @@ export type StakeForFee = {
     },
     {
       "name": "withdraw",
+      "docs": [
+        "Withdraw an existing unstake request. The program is deprecated, so the unstake lock duration is not enforced."
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -765,6 +783,147 @@ export type StakeForFee = {
           "name": "owner",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimFeeAndWithdrawFull",
+      "docs": [
+        "Claim all pending stake and quote token fees to the user, then withdraw the whole stake amount",
+        "directly from the stake escrow, without an unstake request and lock duration.",
+        "An existing unstake request is not affected; use `withdraw` to complete it."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "quoteTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userStakeToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userQuoteToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ammProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -892,6 +1051,9 @@ export type StakeForFee = {
     },
     {
       "name": "updateUnstakeLockDuration",
+      "docs": [
+        "Deprecated. `withdraw` no longer waits for the unstake lock duration, so it is no longer used."
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -923,6 +1085,9 @@ export type StakeForFee = {
     },
     {
       "name": "updateSecondsToFullUnlock",
+      "docs": [
+        "Deprecated. Locked fees are released at once, so `seconds_to_full_unlock` is no longer used."
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -1272,6 +1437,13 @@ export type StakeForFee = {
             "type": "u8"
           },
           {
+            "name": "finalFeeClaimed",
+            "docs": [
+              "1 once the final lock escrow fee is claimed"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "padding0",
             "docs": [
               "Padding"
@@ -1279,7 +1451,7 @@ export type StakeForFee = {
             "type": {
               "array": [
                 "u8",
-                7
+                6
               ]
             }
           },
@@ -1944,6 +2116,61 @@ export type StakeForFee = {
       ]
     },
     {
+      "name": "WithdrawStakeSucceed",
+      "fields": [
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "newStakeEscrowAmount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeAPending",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeBPending",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeAPerLiquidityCheckpoint",
+          "type": "u128",
+          "index": false
+        },
+        {
+          "name": "feeBPerLiquidityCheckpoint",
+          "type": "u128",
+          "index": false
+        }
+      ]
+    },
+    {
       "name": "ClaimFeeSucceed",
       "fields": [
         {
@@ -2369,16 +2596,29 @@ export type StakeForFee = {
       "code": 6022,
       "name": "InvalidFeeCrankIx",
       "msg": "Invalid fee crank instruction"
+    },
+    {
+      "code": 6023,
+      "name": "Deprecated",
+      "msg": "Instruction is deprecated"
+    },
+    {
+      "code": 6024,
+      "name": "NothingToExit",
+      "msg": "Nothing to exit"
     }
   ]
 };
 
 export const IDL: StakeForFee = {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "stake_for_fee",
   "instructions": [
     {
       "name": "initializeVault",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -2494,6 +2734,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "initializeStakeEscrow",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -2545,6 +2788,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "stake",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -2688,7 +2934,7 @@ export const IDL: StakeForFee = {
     {
       "name": "claimFee",
       "docs": [
-        "The endpoint will only claim the quote token (SOL or USDC). The meme token will be automatically restaked."
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
       ],
       "accounts": [
         {
@@ -2832,6 +3078,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "requestUnstake",
+      "docs": [
+        "Deprecated. Use `claim_fee_and_withdraw_full` instead."
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -2973,6 +3222,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "cancelUnstake",
+      "docs": [
+        "Deprecated"
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -3110,6 +3362,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "withdraw",
+      "docs": [
+        "Withdraw an existing unstake request. The program is deprecated, so the unstake lock duration is not enforced."
+      ],
       "accounts": [
         {
           "name": "unstake",
@@ -3140,6 +3395,147 @@ export const IDL: StakeForFee = {
           "name": "owner",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimFeeAndWithdrawFull",
+      "docs": [
+        "Claim all pending stake and quote token fees to the user, then withdraw the whole stake amount",
+        "directly from the stake escrow, without an unstake request and lock duration.",
+        "An existing unstake request is not affected; use `withdraw` to complete it."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "quoteTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userStakeToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userQuoteToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lockEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bTokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLp",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "aVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bVaultLpMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "ammProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultProgram",
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "tokenProgram",
@@ -3267,6 +3663,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "updateUnstakeLockDuration",
+      "docs": [
+        "Deprecated. `withdraw` no longer waits for the unstake lock duration, so it is no longer used."
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -3298,6 +3697,9 @@ export const IDL: StakeForFee = {
     },
     {
       "name": "updateSecondsToFullUnlock",
+      "docs": [
+        "Deprecated. Locked fees are released at once, so `seconds_to_full_unlock` is no longer used."
+      ],
       "accounts": [
         {
           "name": "vault",
@@ -3647,6 +4049,13 @@ export const IDL: StakeForFee = {
             "type": "u8"
           },
           {
+            "name": "finalFeeClaimed",
+            "docs": [
+              "1 once the final lock escrow fee is claimed"
+            ],
+            "type": "u8"
+          },
+          {
             "name": "padding0",
             "docs": [
               "Padding"
@@ -3654,7 +4063,7 @@ export const IDL: StakeForFee = {
             "type": {
               "array": [
                 "u8",
-                7
+                6
               ]
             }
           },
@@ -4319,6 +4728,61 @@ export const IDL: StakeForFee = {
       ]
     },
     {
+      "name": "WithdrawStakeSucceed",
+      "fields": [
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "newStakeEscrowAmount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeAPending",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeBPending",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "feeAPerLiquidityCheckpoint",
+          "type": "u128",
+          "index": false
+        },
+        {
+          "name": "feeBPerLiquidityCheckpoint",
+          "type": "u128",
+          "index": false
+        }
+      ]
+    },
+    {
       "name": "ClaimFeeSucceed",
       "fields": [
         {
@@ -4744,6 +5208,16 @@ export const IDL: StakeForFee = {
       "code": 6022,
       "name": "InvalidFeeCrankIx",
       "msg": "Invalid fee crank instruction"
+    },
+    {
+      "code": 6023,
+      "name": "Deprecated",
+      "msg": "Instruction is deprecated"
+    },
+    {
+      "code": 6024,
+      "name": "NothingToExit",
+      "msg": "Nothing to exit"
     }
   ]
 };
