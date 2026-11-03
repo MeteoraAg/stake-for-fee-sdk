@@ -2,12 +2,13 @@
 name = "stake_for_fee_interface"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies.borsh]
 version = "^0.10"
 
 [dependencies.num-derive]
-version = "^0.3"
+version = "^0.4"
 
 [dependencies.num-traits]
 version = "^0.2"
