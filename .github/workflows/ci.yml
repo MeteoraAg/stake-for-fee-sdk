@@ -1,9 +1,9 @@
 name: CI
 
+# Runs on every PR, whatever the base branch: new advisories are published against
+# dependencies that are already in the lockfile
 on:
   pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
