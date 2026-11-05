@@ -1,11 +1,10 @@
-solana_program::declare_id!("FEESngU3neckdwib9X3KWqdL7Mjmqk9XNp3uh5JbP4KP");
-pub mod accounts;
-pub use accounts::*;
-pub mod typedefs;
-pub use typedefs::*;
-pub mod instructions;
-pub use instructions::*;
-pub mod errors;
-pub use errors::*;
-pub mod events;
-pub use events::*;
+use anchor_lang::prelude::*;
+
+declare_program!(stake_for_fee);
+
+pub use stake_for_fee::*;
+// Explicit re-exports, the anchor prelude glob also exports `program` and `error` modules
+pub use stake_for_fee::program;
+// `declare_program!` only generates the `error` module without `idl-build`
+#[cfg(not(feature = "idl-build"))]
+pub use stake_for_fee::error;

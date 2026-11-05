@@ -163,7 +163,8 @@ export function calculateFeeFarmPerformance(
     accountStatesT1.bVaultLp,
     accountStatesT1.aVaultLpMint,
     accountStatesT1.bVaultLpMint,
-    accountStatesT1.poolLpMint
+    accountStatesT1.poolLpMint,
+    accountStatesT1.ammPool
   );
   totalFeeAAmountT1 = totalFeeAAmountT1.add(totalFeeAAmountClaimableT1[0]);
   totalFeeBAmountT1 = totalFeeBAmountT1.add(totalFeeAAmountClaimableT1[1]);
@@ -180,7 +181,8 @@ export function calculateFeeFarmPerformance(
     accountStatesT0.bVaultLp,
     accountStatesT0.aVaultLpMint,
     accountStatesT0.bVaultLpMint,
-    accountStatesT0.poolLpMint
+    accountStatesT0.poolLpMint,
+    accountStatesT0.ammPool
   );
   totalFeeAAmountT0 = totalFeeAAmountT0.add(totalFeeAAmountClaimableT0[0]);
   totalFeeBAmountT0 = totalFeeBAmountT0.add(totalFeeAAmountClaimableT0[1]);
@@ -263,7 +265,8 @@ export function parseFeeVaultInfo(
     bVaultLp,
     aVaultLpMint,
     bVaultLpMint,
-    poolLpMint
+    poolLpMint,
+    ammPool
   );
 
   const totalFeeAAmount = new Decimal(

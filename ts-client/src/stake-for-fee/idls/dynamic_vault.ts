@@ -1,5 +1,5 @@
 export type Vault = {
-    "version": "0.9.1",
+    "version": "0.9.5",
     "name": "vault",
     "docs": [
       "Program for vault"
@@ -558,7 +558,7 @@ export type Vault = {
             "isMut": true,
             "isSigner": false,
             "docs": [
-              "token_advance_payemnt",
+              "token_advance_payment",
               "the owner of token_advance_payment must be admin"
             ]
           },
@@ -568,7 +568,7 @@ export type Vault = {
             "isSigner": false,
             "docs": [
               "token_vault_advance_payment",
-              "the account must be different from token_vault",
+              "the account must be different from token_vault and strategy's related token account",
               "the owner of token_advance_payment must be vault"
             ]
           },
@@ -611,56 +611,6 @@ export type Vault = {
             "type": "u64"
           }
         ]
-      },
-      {
-        "name": "collectDust",
-        "docs": [
-          "collect token, that someone send wrongly",
-          "also help in case Mango reimbursement"
-        ],
-        "accounts": [
-          {
-            "name": "vault",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "vault"
-            ]
-          },
-          {
-            "name": "tokenVault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "Token vault, must be different from vault.token_vault"
-            ]
-          },
-          {
-            "name": "tokenAdmin",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "token admin, enforce owner is admin to avoid mistake"
-            ]
-          },
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true,
-            "docs": [
-              "admin"
-            ]
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "token_program"
-            ]
-          }
-        ],
-        "args": []
       },
       {
         "name": "addStrategy",
@@ -921,80 +871,6 @@ export type Vault = {
         "args": []
       },
       {
-        "name": "withdraw2",
-        "docs": [
-          "Withdraw v2. Withdraw from token vault if no remaining accounts are available. Else, it will attempt to withdraw from strategy and token vault. This method just proxy between 2 methods. Protocol integration should be using withdraw instead of this function."
-        ],
-        "accounts": [
-          {
-            "name": "vault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "vault"
-            ]
-          },
-          {
-            "name": "tokenVault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "token_vault"
-            ]
-          },
-          {
-            "name": "lpMint",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "lp_mint"
-            ]
-          },
-          {
-            "name": "userToken",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "user_token"
-            ]
-          },
-          {
-            "name": "userLp",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "user_lp"
-            ]
-          },
-          {
-            "name": "user",
-            "isMut": false,
-            "isSigner": true,
-            "docs": [
-              "user"
-            ]
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "token_program"
-            ]
-          }
-        ],
-        "args": [
-          {
-            "name": "unmintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "minOutAmount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
         "name": "deposit",
         "docs": [
           "user deposit liquidity to vault"
@@ -1249,6 +1125,31 @@ export type Vault = {
             "type": "u64"
           }
         ]
+      },
+      {
+        "name": "migrateVault",
+        "docs": [
+          "Move a legacy vault to version 1, which prices LP shares with a tracked LP supply. Permissionless."
+        ],
+        "accounts": [
+          {
+            "name": "vault",
+            "isMut": true,
+            "isSigner": false,
+            "docs": [
+              "Vault account"
+            ]
+          },
+          {
+            "name": "lpMint",
+            "isMut": false,
+            "isSigner": false,
+            "docs": [
+              "LP mint of the vault"
+            ]
+          }
+        ],
+        "args": []
       }
     ],
     "accounts": [
@@ -1319,7 +1220,36 @@ export type Vault = {
               "type": {
                 "array": [
                   "publicKey",
-                  30
+                  29
+                ]
+              }
+            },
+            {
+              "name": "version",
+              "docs": [
+                "Vault version. 0: LP shares priced with `lp_mint.supply`. 1: LP shares priced with `total_lp_supply`.",
+                "Shares the 32 bytes of the former 30th strategy slot with `total_lp_supply` and `_padding0`."
+              ],
+              "type": "u8"
+            },
+            {
+              "name": "totalLpSupply",
+              "docs": [
+                "LP supply tracked by the vault. Only changes when the vault mints or burns LP, so LP burned",
+                "outside the vault (SPL Token lets anyone burn tokens held by the System Program or the",
+                "incinerator) does not change the value of the remaining LP. Used when `version == 1`."
+              ],
+              "type": "u64"
+            },
+            {
+              "name": "padding0",
+              "docs": [
+                "Padding, keeps the former 30th strategy slot at 32 bytes"
+              ],
+              "type": {
+                "array": [
+                  "u8",
+                  23
                 ]
               }
             },
@@ -1558,23 +1488,9 @@ export type Vault = {
             },
             {
               "name": "Kamino"
-            }
-          ]
-        }
-      },
-      {
-        "name": "VaultType",
-        "docs": [
-          "Vault type"
-        ],
-        "type": {
-          "kind": "enum",
-          "variants": [
-            {
-              "name": "IdleVault"
             },
             {
-              "name": "RebalanceVault"
+              "name": "JupLend"
             }
           ]
         }
@@ -1706,6 +1622,26 @@ export type Vault = {
             "index": false
           }
         ]
+      },
+      {
+        "name": "VaultMigrated",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "publicKey",
+            "index": false
+          },
+          {
+            "name": "version",
+            "type": "u8",
+            "index": false
+          },
+          {
+            "name": "totalLpSupply",
+            "type": "u64",
+            "index": false
+          }
+        ]
       }
     ],
     "errors": [
@@ -1791,7 +1727,7 @@ export type Vault = {
       },
       {
         "code": 6016,
-        "name": "PayAmountIsExeeced",
+        "name": "PayAmountIsExceeded",
         "msg": "Pay amount is exceeded"
       },
       {
@@ -1807,13 +1743,38 @@ export type Vault = {
       {
         "code": 6019,
         "name": "HaveMoneyInLending",
-        "msg": "Cannot remove strategy becase we have some in lending"
+        "msg": "Cannot remove strategy because we have some in lending"
+      },
+      {
+        "code": 6020,
+        "name": "InvalidPrecisionLoss",
+        "msg": "Invalid precision loss"
+      },
+      {
+        "code": 6021,
+        "name": "UndeterminedError",
+        "msg": "Undetermined error"
+      },
+      {
+        "code": 6022,
+        "name": "InvalidLpOwner",
+        "msg": "User is not the owner of the LP token account"
+      },
+      {
+        "code": 6023,
+        "name": "InvalidLpSupplyAccounting",
+        "msg": "Vault LP supply accounting is invalid"
+      },
+      {
+        "code": 6024,
+        "name": "VaultAlreadyMigrated",
+        "msg": "Vault is already migrated"
       }
     ]
   };
   
   export const IDL: Vault = {
-    "version": "0.9.1",
+    "version": "0.9.5",
     "name": "vault",
     "docs": [
       "Program for vault"
@@ -2372,7 +2333,7 @@ export type Vault = {
             "isMut": true,
             "isSigner": false,
             "docs": [
-              "token_advance_payemnt",
+              "token_advance_payment",
               "the owner of token_advance_payment must be admin"
             ]
           },
@@ -2382,7 +2343,7 @@ export type Vault = {
             "isSigner": false,
             "docs": [
               "token_vault_advance_payment",
-              "the account must be different from token_vault",
+              "the account must be different from token_vault and strategy's related token account",
               "the owner of token_advance_payment must be vault"
             ]
           },
@@ -2425,56 +2386,6 @@ export type Vault = {
             "type": "u64"
           }
         ]
-      },
-      {
-        "name": "collectDust",
-        "docs": [
-          "collect token, that someone send wrongly",
-          "also help in case Mango reimbursement"
-        ],
-        "accounts": [
-          {
-            "name": "vault",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "vault"
-            ]
-          },
-          {
-            "name": "tokenVault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "Token vault, must be different from vault.token_vault"
-            ]
-          },
-          {
-            "name": "tokenAdmin",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "token admin, enforce owner is admin to avoid mistake"
-            ]
-          },
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true,
-            "docs": [
-              "admin"
-            ]
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "token_program"
-            ]
-          }
-        ],
-        "args": []
       },
       {
         "name": "addStrategy",
@@ -2735,80 +2646,6 @@ export type Vault = {
         "args": []
       },
       {
-        "name": "withdraw2",
-        "docs": [
-          "Withdraw v2. Withdraw from token vault if no remaining accounts are available. Else, it will attempt to withdraw from strategy and token vault. This method just proxy between 2 methods. Protocol integration should be using withdraw instead of this function."
-        ],
-        "accounts": [
-          {
-            "name": "vault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "vault"
-            ]
-          },
-          {
-            "name": "tokenVault",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "token_vault"
-            ]
-          },
-          {
-            "name": "lpMint",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "lp_mint"
-            ]
-          },
-          {
-            "name": "userToken",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "user_token"
-            ]
-          },
-          {
-            "name": "userLp",
-            "isMut": true,
-            "isSigner": false,
-            "docs": [
-              "user_lp"
-            ]
-          },
-          {
-            "name": "user",
-            "isMut": false,
-            "isSigner": true,
-            "docs": [
-              "user"
-            ]
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false,
-            "docs": [
-              "token_program"
-            ]
-          }
-        ],
-        "args": [
-          {
-            "name": "unmintAmount",
-            "type": "u64"
-          },
-          {
-            "name": "minOutAmount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
         "name": "deposit",
         "docs": [
           "user deposit liquidity to vault"
@@ -3063,6 +2900,31 @@ export type Vault = {
             "type": "u64"
           }
         ]
+      },
+      {
+        "name": "migrateVault",
+        "docs": [
+          "Move a legacy vault to version 1, which prices LP shares with a tracked LP supply. Permissionless."
+        ],
+        "accounts": [
+          {
+            "name": "vault",
+            "isMut": true,
+            "isSigner": false,
+            "docs": [
+              "Vault account"
+            ]
+          },
+          {
+            "name": "lpMint",
+            "isMut": false,
+            "isSigner": false,
+            "docs": [
+              "LP mint of the vault"
+            ]
+          }
+        ],
+        "args": []
       }
     ],
     "accounts": [
@@ -3133,7 +2995,36 @@ export type Vault = {
               "type": {
                 "array": [
                   "publicKey",
-                  30
+                  29
+                ]
+              }
+            },
+            {
+              "name": "version",
+              "docs": [
+                "Vault version. 0: LP shares priced with `lp_mint.supply`. 1: LP shares priced with `total_lp_supply`.",
+                "Shares the 32 bytes of the former 30th strategy slot with `total_lp_supply` and `_padding0`."
+              ],
+              "type": "u8"
+            },
+            {
+              "name": "totalLpSupply",
+              "docs": [
+                "LP supply tracked by the vault. Only changes when the vault mints or burns LP, so LP burned",
+                "outside the vault (SPL Token lets anyone burn tokens held by the System Program or the",
+                "incinerator) does not change the value of the remaining LP. Used when `version == 1`."
+              ],
+              "type": "u64"
+            },
+            {
+              "name": "padding0",
+              "docs": [
+                "Padding, keeps the former 30th strategy slot at 32 bytes"
+              ],
+              "type": {
+                "array": [
+                  "u8",
+                  23
                 ]
               }
             },
@@ -3372,23 +3263,9 @@ export type Vault = {
             },
             {
               "name": "Kamino"
-            }
-          ]
-        }
-      },
-      {
-        "name": "VaultType",
-        "docs": [
-          "Vault type"
-        ],
-        "type": {
-          "kind": "enum",
-          "variants": [
-            {
-              "name": "IdleVault"
             },
             {
-              "name": "RebalanceVault"
+              "name": "JupLend"
             }
           ]
         }
@@ -3520,6 +3397,26 @@ export type Vault = {
             "index": false
           }
         ]
+      },
+      {
+        "name": "VaultMigrated",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "publicKey",
+            "index": false
+          },
+          {
+            "name": "version",
+            "type": "u8",
+            "index": false
+          },
+          {
+            "name": "totalLpSupply",
+            "type": "u64",
+            "index": false
+          }
+        ]
       }
     ],
     "errors": [
@@ -3605,7 +3502,7 @@ export type Vault = {
       },
       {
         "code": 6016,
-        "name": "PayAmountIsExeeced",
+        "name": "PayAmountIsExceeded",
         "msg": "Pay amount is exceeded"
       },
       {
@@ -3621,7 +3518,32 @@ export type Vault = {
       {
         "code": 6019,
         "name": "HaveMoneyInLending",
-        "msg": "Cannot remove strategy becase we have some in lending"
+        "msg": "Cannot remove strategy because we have some in lending"
+      },
+      {
+        "code": 6020,
+        "name": "InvalidPrecisionLoss",
+        "msg": "Invalid precision loss"
+      },
+      {
+        "code": 6021,
+        "name": "UndeterminedError",
+        "msg": "Undetermined error"
+      },
+      {
+        "code": 6022,
+        "name": "InvalidLpOwner",
+        "msg": "User is not the owner of the LP token account"
+      },
+      {
+        "code": 6023,
+        "name": "InvalidLpSupplyAccounting",
+        "msg": "Vault LP supply accounting is invalid"
+      },
+      {
+        "code": 6024,
+        "name": "VaultAlreadyMigrated",
+        "msg": "Vault is already migrated"
       }
     ]
   };
