@@ -1050,6 +1050,108 @@ export type StakeForFee = {
       "args": []
     },
     {
+      "name": "closeZeroUnstake",
+      "docs": [
+        "Owner closes an unstake request with zero amount, the rent goes back to the owner."
+      ],
+      "accounts": [
+        {
+          "name": "unstake",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeStakeEscrow",
+      "docs": [
+        "Permissionless. Close an empty stake escrow, the rent goes back to the owner."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeVault",
+      "docs": [
+        "Permissionless. Once all stake escrows are closed, close the vault and both lists, the rent goes to the creator."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateUnstakeLockDuration",
       "docs": [
         "Deprecated. `withdraw` no longer waits for the unstake lock duration, so it is no longer used."
@@ -1640,7 +1742,7 @@ export type StakeForFee = {
           {
             "name": "totalStakeEscrowCount",
             "docs": [
-              "Total stake escrow count"
+              "Number of open stake escrows"
             ],
             "type": "u64"
           },
@@ -1787,23 +1889,6 @@ export type StakeForFee = {
                 4
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "Rounding",
-      "docs": [
-        "Round up, down"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Up"
-          },
-          {
-            "name": "Down"
           }
         ]
       }
@@ -2479,6 +2564,76 @@ export type StakeForFee = {
           "index": false
         }
       ]
+    },
+    {
+      "name": "CloseZeroUnstake",
+      "fields": [
+        {
+          "name": "unstake",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "StakeEscrowClosed",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "VaultClosed",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "creator",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -2606,6 +2761,21 @@ export type StakeForFee = {
       "code": 6024,
       "name": "NothingToExit",
       "msg": "Nothing to exit"
+    },
+    {
+      "code": 6025,
+      "name": "UnstakeAmountNotZero",
+      "msg": "Unstake amount is not zero"
+    },
+    {
+      "code": 6026,
+      "name": "StakeEscrowNotEmpty",
+      "msg": "Stake escrow has stake amount, pending fees or ongoing unstake amount"
+    },
+    {
+      "code": 6027,
+      "name": "VaultNotEmpty",
+      "msg": "Vault has open stake escrows, stake amount or ongoing unstake amount"
     }
   ]
 };
@@ -3662,6 +3832,108 @@ export const IDL: StakeForFee = {
       "args": []
     },
     {
+      "name": "closeZeroUnstake",
+      "docs": [
+        "Owner closes an unstake request with zero amount, the rent goes back to the owner."
+      ],
+      "accounts": [
+        {
+          "name": "unstake",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeStakeEscrow",
+      "docs": [
+        "Permissionless. Close an empty stake escrow, the rent goes back to the owner."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stakeEscrow",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeVault",
+      "docs": [
+        "Permissionless. Once all stake escrows are closed, close the vault and both lists, the rent goes to the creator."
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "topStakerList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fullBalanceList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "eventAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "updateUnstakeLockDuration",
       "docs": [
         "Deprecated. `withdraw` no longer waits for the unstake lock duration, so it is no longer used."
@@ -4252,7 +4524,7 @@ export const IDL: StakeForFee = {
           {
             "name": "totalStakeEscrowCount",
             "docs": [
-              "Total stake escrow count"
+              "Number of open stake escrows"
             ],
             "type": "u64"
           },
@@ -4399,23 +4671,6 @@ export const IDL: StakeForFee = {
                 4
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "Rounding",
-      "docs": [
-        "Round up, down"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Up"
-          },
-          {
-            "name": "Down"
           }
         ]
       }
@@ -5091,6 +5346,76 @@ export const IDL: StakeForFee = {
           "index": false
         }
       ]
+    },
+    {
+      "name": "CloseZeroUnstake",
+      "fields": [
+        {
+          "name": "unstake",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "StakeEscrowClosed",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "stakeEscrow",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "VaultClosed",
+      "fields": [
+        {
+          "name": "pool",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "vault",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "creator",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -5218,6 +5543,21 @@ export const IDL: StakeForFee = {
       "code": 6024,
       "name": "NothingToExit",
       "msg": "Nothing to exit"
+    },
+    {
+      "code": 6025,
+      "name": "UnstakeAmountNotZero",
+      "msg": "Unstake amount is not zero"
+    },
+    {
+      "code": 6026,
+      "name": "StakeEscrowNotEmpty",
+      "msg": "Stake escrow has stake amount, pending fees or ongoing unstake amount"
+    },
+    {
+      "code": 6027,
+      "name": "VaultNotEmpty",
+      "msg": "Vault has open stake escrows, stake amount or ongoing unstake amount"
     }
   ]
 };

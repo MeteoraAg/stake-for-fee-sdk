@@ -647,6 +647,136 @@
       "args": []
     },
     {
+      "name": "close_stake_escrow",
+      "docs": [
+        "Permissionless. Close an empty stake escrow, the rent goes back to the owner."
+      ],
+      "discriminator": [
+        16,
+        127,
+        221,
+        166,
+        16,
+        201,
+        111,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "stake_escrow"
+          ]
+        },
+        {
+          "name": "stake_escrow",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "relations": [
+            "stake_escrow"
+          ]
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_vault",
+      "docs": [
+        "Permissionless. Once all stake escrows are closed, close the vault and both lists, the rent goes to the creator."
+      ],
+      "discriminator": [
+        141,
+        103,
+        17,
+        126,
+        72,
+        75,
+        29,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "top_staker_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "full_balance_list",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_zero_unstake",
+      "docs": [
+        "Owner closes an unstake request with zero amount, the rent goes back to the owner."
+      ],
+      "discriminator": [
+        53,
+        247,
+        128,
+        41,
+        55,
+        37,
+        203,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "unstake",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "unstake"
+          ]
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize_stake_escrow",
       "docs": [
         "Deprecated"
@@ -1680,6 +1810,19 @@
       ]
     },
     {
+      "name": "CloseZeroUnstake",
+      "discriminator": [
+        37,
+        197,
+        15,
+        10,
+        233,
+        82,
+        228,
+        201
+      ]
+    },
+    {
       "name": "ConfigClosed",
       "discriminator": [
         4,
@@ -1745,6 +1888,19 @@
       ]
     },
     {
+      "name": "StakeEscrowClosed",
+      "discriminator": [
+        195,
+        201,
+        232,
+        6,
+        5,
+        140,
+        74,
+        158
+      ]
+    },
+    {
       "name": "StakeEscrowCreated",
       "discriminator": [
         30,
@@ -1807,6 +1963,19 @@
         75,
         51,
         151
+      ]
+    },
+    {
+      "name": "VaultClosed",
+      "discriminator": [
+        238,
+        129,
+        38,
+        228,
+        227,
+        118,
+        249,
+        215
       ]
     },
     {
@@ -1974,6 +2143,21 @@
       "code": 6024,
       "name": "NothingToExit",
       "msg": "Nothing to exit"
+    },
+    {
+      "code": 6025,
+      "name": "UnstakeAmountNotZero",
+      "msg": "Unstake amount is not zero"
+    },
+    {
+      "code": 6026,
+      "name": "StakeEscrowNotEmpty",
+      "msg": "Stake escrow has stake amount, pending fees or ongoing unstake amount"
+    },
+    {
+      "code": 6027,
+      "name": "VaultNotEmpty",
+      "msg": "Vault has open stake escrows, stake amount or ongoing unstake amount"
     }
   ],
   "types": [
@@ -2129,6 +2313,30 @@
           {
             "name": "total_fee_b_amount",
             "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CloseZeroUnstake",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "unstake",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
           }
         ]
       }
@@ -2667,7 +2875,7 @@
           {
             "name": "total_stake_escrow_count",
             "docs": [
-              "Total stake escrow count"
+              "Number of open stake escrows"
             ],
             "type": "u64"
           },
@@ -3112,6 +3320,30 @@
                 20
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StakeEscrowClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
           }
         ]
       }
@@ -3697,6 +3929,26 @@
           {
             "name": "token_vault_bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
           }
         ]
       }

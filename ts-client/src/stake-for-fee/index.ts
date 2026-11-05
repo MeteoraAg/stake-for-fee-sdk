@@ -935,6 +935,114 @@ export class StakeForFee {
   }
 
   /**
+   * Closes an empty stake escrow. The rent goes back to the owner of the stake escrow.
+   * Permissionless, anyone can pay for the transaction.
+   * The transaction fails with the `StakeEscrowNotEmpty` error (6026) when the stake escrow has stake amount, pending fees or ongoing unstake amount.
+   * Use `claimFeeAndWithdrawFull` and `withdraw` to empty it first.
+   * Unstake requests with zero amount don't block the close. Use `StakeForFee.closeZeroUnstake` to close them.
+   * @param owner The owner of the stake escrow. Receives the rent.
+   * @param payer The fee payer. Defaults to the owner.
+   * @returns A transaction that can be signed and sent to the network.
+   */
+  public async closeStakeEscrow(
+    owner: PublicKey,
+    payer: PublicKey = owner
+  ): Promise<Transaction> {
+    const stakeEscrowKey = deriveStakeEscrow(
+      this.feeVaultKey,
+      owner,
+      this.stakeForFeeProgram.programId
+    );
+
+    const transaction = await this.stakeForFeeProgram.methods
+      .closeStakeEscrow()
+      .accounts({
+        vault: this.feeVaultKey,
+        stakeEscrow: stakeEscrowKey,
+        owner,
+      })
+      .transaction();
+
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash();
+
+    return new Transaction({
+      blockhash,
+      lastValidBlockHeight,
+      feePayer: payer,
+    }).add(transaction);
+  }
+
+  /**
+   * Closes the fee vault, the top staker list and the full balance list. The rent goes to the vault creator.
+   * Permissionless, anyone can pay for the transaction.
+   * The transaction fails with the `VaultNotEmpty` error (6027) until all stake escrows are closed and the vault has no stake amount, ongoing unstake amount or effective stake amount.
+   * The token vaults are not closed, so the locked fees stay permanently locked.
+   * @param payer The fee payer.
+   * @returns A transaction that can be signed and sent to the network.
+   */
+  public async closeVault(payer: PublicKey): Promise<Transaction> {
+    const transaction = await this.stakeForFeeProgram.methods
+      .closeVault()
+      .accounts({
+        vault: this.feeVaultKey,
+        topStakerList: this.accountStates.feeVault.topStakerList,
+        fullBalanceList: this.accountStates.feeVault.fullBalanceList,
+        creator: this.accountStates.feeVault.creator,
+      })
+      .transaction();
+
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash();
+
+    return new Transaction({
+      blockhash,
+      lastValidBlockHeight,
+      feePayer: payer,
+    }).add(transaction);
+  }
+
+  /**
+   * Closes an unstake request with zero amount. The rent goes back to the owner.
+   * Static, because the request can outlive its stake escrow and fee vault.
+   * The transaction fails with the `UnstakeAmountNotZero` error (6025) when the request has an unstake amount. Use `withdraw` instead.
+   * Requests created before program 0.1.1 have no owner and can't be closed this way.
+   * @param connection The connection to use.
+   * @param unstakeKey The public key of the unstake account to close.
+   * @param owner The owner of the unstake request. Signer.
+   * @param programId The program id of the stake-for-fee program. Defaults to the idl program id.
+   * @returns A transaction that can be signed and sent to the network.
+   */
+  static async closeZeroUnstake(
+    connection: Connection,
+    unstakeKey: PublicKey,
+    owner: PublicKey,
+    programId?: PublicKey
+  ): Promise<Transaction> {
+    const stakeForFeeProgram = createStakeFeeProgram(
+      connection,
+      programId ?? STAKE_FOR_FEE_PROGRAM_ID
+    );
+
+    const transaction = await stakeForFeeProgram.methods
+      .closeZeroUnstake()
+      .accounts({
+        unstake: unstakeKey,
+        owner,
+      })
+      .transaction();
+
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+
+    return new Transaction({
+      blockhash,
+      lastValidBlockHeight,
+      feePayer: owner,
+    }).add(transaction);
+  }
+
+  /**
    * Requests to unstake a given amount of tokens from the vault.
    * Creates a new `Unstake` account and initializes it to the given owner.
    *
@@ -1536,6 +1644,16 @@ export class StakeForFee {
         ({ pool: vaultPool }) => vaultPool.toBase58() === pool.toBase58()
       );
       const stakeEscrow = stakeEscrowMap.get(pool.toBase58());
+
+      // Fees accrue only while the stake escrow is in the top list
+      if (!Boolean(stakeEscrow.inTopList)) {
+        unclaimFeeMap.set(pool.toBase58(), {
+          feeA: stakeEscrow.feeAPending,
+          feeB: stakeEscrow.feeBPending,
+        });
+        return;
+      }
+
       const lockEscrow = lockEscrowAccounts.get(feeVault.lockEscrow.toBase58());
       const poolInfoAccounts = poolInfoAccountsMap.get(pool.toBase58());
       const [releasedFeeA, releasedFeeB] = StakeForFee.getFarmReleasedFees({
@@ -1607,6 +1725,7 @@ export class StakeForFee {
 
   /**
    * Gets all unstake records for the given stake escrow.
+   * Unstake requests with zero amount are also returned after their stake escrow is closed.
    *
    * @param connection The connection to use.
    * @param owner The owner's pubkey.
@@ -1622,11 +1741,12 @@ export class StakeForFee {
       STAKE_FOR_FEE_PROGRAM_ID
     );
 
-    const [{ publicKey: stakeEscrow }] =
-      await stakeForFeeProgram.account.stakeEscrow.all([
-        { memcmp: { offset: 8, bytes: owner.toBase58() } },
-        { memcmp: { offset: 8 + 32, bytes: feeVault.toBase58() } },
-      ]);
+    // Derived instead of fetched, the stake escrow may be closed
+    const stakeEscrow = deriveStakeEscrow(
+      feeVault,
+      owner,
+      stakeForFeeProgram.programId
+    );
 
     return await stakeForFeeProgram.account.unstake.all([
       {
@@ -1711,7 +1831,8 @@ export class StakeForFee {
 
   /**
    * Calculates the total amount of fees that have been released from the locked escrow to the top staker list for the farm.
-   * All locked fees are released at once, but nothing is released until `feeVault.configuration.startFeeDistributeTimestamp` has passed.
+   * All locked fees are released at once, but nothing is released until `feeVault.configuration.startFeeDistributeTimestamp` has passed,
+   * or while the top stakers have no effective stake amount. The program keeps the fees locked in both cases.
    * @returns An array of two BNs. The first element is the total amount of token A fees that have been released. The second element is the total amount of token B fees that have been released.
    */
   static getFarmReleasedFees({
@@ -1742,7 +1863,8 @@ export class StakeForFee {
     if (
       clock.unixTimestamp.lte(
         feeVault.configuration.startFeeDistributeTimestamp
-      )
+      ) ||
+      feeVault.topStakerInfo.effectiveStakeAmount.isZero()
     ) {
       return [new BN(0), new BN(0)];
     }
@@ -1869,10 +1991,15 @@ export class StakeForFee {
 
   /**
    * Calculates the total amount of fees that are pending to be claimed for the given stake escrow.
+   * Fees accrue only while the stake escrow is in the top list, otherwise only the pending fees stored in the stake escrow are returned.
    * @param stakeEscrow The stake escrow to calculate the pending fees for.
    * @returns An array of two BNs. The first element is the total amount of token A fees that are pending to be claimed. The second element is the total amount of token B fees that are pending to be claimed.
    */
   public getStakeEscrowPendingFees(stakeEscrow: StakeEscrow) {
+    if (!Boolean(stakeEscrow.inTopList)) {
+      return [stakeEscrow.feeAPending, stakeEscrow.feeBPending];
+    }
+
     const [releasedFeeA, releasedFeeB] = StakeForFee.getFarmReleasedFees({
       feeVault: this.accountStates.feeVault,
       clock: this.accountStates.clock,

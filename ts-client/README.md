@@ -58,22 +58,35 @@ const m3m3 = await StakeForFee.create(connection, poolAddress);
 
 - Full exit (deprecation)
 
-Full exit for stakers after the program deprecation. Withdraw every ongoing unstake request, then claim all pending fees and withdraw the stake in one transaction with `claimFeeAndWithdrawFull`.
+Full exit for stakers after the program deprecation. Withdraw every ongoing unstake request, then claim all pending fees and withdraw the stake in one transaction with `claimFeeAndWithdrawFull`, then close the empty stake escrow to get the rent back. Once every staker has exited, anyone can close the vault.
 
 ```ts
 // 1. Withdraw every ongoing unstake request. They no longer wait for the unstake lock duration.
+// Once the stake escrow is closed, only unstake requests with zero amount are left, close them with `closeZeroUnstake` instead.
+// Skip the ones created before program 0.1.1, they have no owner.
+const { stakeEscrow: openStakeEscrow } =
+  await feeFarm.getUserStakeAndClaimBalance(mockWallet.publicKey);
 const unstakeList = await StakeForFee.getUnstakeByUser(
   connection,
   mockWallet.publicKey,
   feeFarm.feeVaultKey
 );
-for (const { publicKey: unstakeKey } of unstakeList) {
-  const withdrawTx = await feeFarm.withdraw(unstakeKey, mockWallet.publicKey);
-  await provider.sendAndConfirm(withdrawTx);
+for (const { publicKey: unstakeKey, account } of unstakeList) {
+  if (openStakeEscrow) {
+    const withdrawTx = await feeFarm.withdraw(unstakeKey, mockWallet.publicKey);
+    await provider.sendAndConfirm(withdrawTx);
+  } else if (!account.owner.equals(PublicKey.default)) {
+    const closeZeroUnstakeTx = await StakeForFee.closeZeroUnstake(
+      connection,
+      unstakeKey,
+      mockWallet.publicKey
+    );
+    await provider.sendAndConfirm(closeZeroUnstakeTx);
+  }
 }
 
 // 2. Claim all pending fees, then withdraw the whole stake amount.
-// It fails with `NothingToExit` when there is no stake amount and no pending fees, so skip it in that case.
+// Skip it when there is no stake amount and no pending fees.
 await feeFarm.refreshStates();
 const { stakeEscrow, unclaimFee } = await feeFarm.getUserStakeAndClaimBalance(
   mockWallet.publicKey
@@ -88,6 +101,29 @@ if (
     mockWallet.publicKey
   );
   await provider.sendAndConfirm(claimFeeAndWithdrawFullTx);
+}
+
+// 3. Close the empty stake escrow, the rent goes back to the owner.
+if (stakeEscrow) {
+  const closeStakeEscrowTx = await feeFarm.closeStakeEscrow(
+    mockWallet.publicKey
+  );
+  await provider.sendAndConfirm(closeStakeEscrowTx);
+}
+
+// 4. Close the vault, the top staker list and the full balance list, the rent goes to the vault creator. Anyone can close it.
+// Precondition: all stake escrows of the vault are closed, and the vault has no stake amount, ongoing unstake amount or effective stake amount.
+// The token vaults are not closed, so the locked fees stay permanently locked.
+await feeFarm.refreshStates();
+const { metrics, topStakerInfo } = feeFarm.accountStates.feeVault;
+if (
+  metrics.totalStakeEscrowCount.isZero() &&
+  metrics.totalStakedAmount.isZero() &&
+  metrics.ongoingTotalPartialUnstakeAmount.isZero() &&
+  topStakerInfo.effectiveStakeAmount.isZero()
+) {
+  const closeVaultTx = await feeFarm.closeVault(mockWallet.publicKey); // Fee payer
+  await provider.sendAndConfirm(closeVaultTx);
 }
 ```
 
@@ -127,7 +163,6 @@ const claimableFeeB = fromLamports(
 // Claims all pending stake token and quote token fees, then withdraws the whole stake amount without an unstake request.
 // The stake token fee is transferred to the owner instead of being restaked.
 // A stake escrow without stake amount can still claim its pending fees.
-// Fails with `NothingToExit` when the stake escrow has no stake amount and no pending fees.
 const claimFeeAndWithdrawFullTx = await feeVault.claimFeeAndWithdrawFull(
   mockWallet.publicKey
 );
@@ -184,4 +219,49 @@ const withdrawTx = await feeFarm.withdraw(
   mockWallet.publicKey
 );
 const withdrawTxHash = await provider.sendAndConfirm(withdrawTx);
+```
+
+- Close stake escrow
+
+```ts
+// Permissionless. Closes a stake escrow without stake amount, pending fees and ongoing unstake amount, the rent goes back to the owner.
+// Empty it with `withdraw` and `claimFeeAndWithdrawFull` first.
+const closeStakeEscrowTx = await feeFarm.closeStakeEscrow(
+  stakeEscrowOwner, // Receives the rent
+  mockWallet.publicKey // Fee payer, defaults to the owner
+);
+const closeStakeEscrowTxHash = await provider.sendAndConfirm(
+  closeStakeEscrowTx
+);
+```
+
+- Close zero unstake
+
+```ts
+// The owner closes an unstake request with zero amount, the rent goes back to the owner.
+// Use it when the stake escrow is already closed, else `withdraw` closes the request too.
+const unstakeList = await StakeForFee.getUnstakeByUser(
+  connection,
+  mockWallet.publicKey,
+  feeVaultKey
+);
+for (const { publicKey: unstakeKey, account } of unstakeList) {
+  if (!account.unstakeAmount.isZero()) continue;
+  const closeZeroUnstakeTx = await StakeForFee.closeZeroUnstake(
+    connection,
+    unstakeKey,
+    mockWallet.publicKey
+  );
+  await provider.sendAndConfirm(closeZeroUnstakeTx);
+}
+```
+
+- Close vault
+
+```ts
+// Permissionless. Closes the fee vault, the top staker list and the full balance list, the rent goes to the vault creator.
+// Precondition: all stake escrows of the vault are closed, and the vault has no stake amount, ongoing unstake amount or effective stake amount.
+// The token vaults are not closed, so the locked fees stay permanently locked.
+const closeVaultTx = await feeFarm.closeVault(mockWallet.publicKey); // Fee payer
+const closeVaultTxHash = await provider.sendAndConfirm(closeVaultTx);
 ```
